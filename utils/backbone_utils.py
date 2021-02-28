@@ -43,7 +43,7 @@ class VGGBackbone(nn.Module):
         in_channels = self.input_channels
         for v in self.build:
             if v == 'M':
-                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+                layers += [nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)]
             else:
                 v = int(v)
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
@@ -70,5 +70,11 @@ class VGGBackbone(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        x = self.features(x)
-        return x
+        num_layer = 0
+        for i, layer in enumerate(self.features):
+            if isinstance(layer, nn.MaxPool2d):
+                num_layer +=1
+            if num_layer == 4:
+                conv4_x = x.detach().clone()
+            x = layer(x)
+        return conv4_x, x
