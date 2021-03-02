@@ -5,23 +5,18 @@ import numpy as np
 import json
 import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def vgg_backbone(name = 'vgg16_bn',
+def vgg_backbone(cfg,
                  input_channels = 3,
                  pretrained = True):
     if (input_channels != 3) and pretrained:
         raise ValueError('There are available weights only for 3 channels models.')
-    assert name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
-                    'vgg19', 'vgg19_bn']
-    with open(os.path.join(BASE_DIR,'backbone_cfgs.json')) as f:
-        cfgs = json.load(f)
-    model = VGGBackbone(cfg=cfgs[name], input_channels=input_channels,
+    model = VGGBackbone(cfg=cfg, input_channels=input_channels,
                         pretrained=pretrained)
     return model
 
 class VGGBackbone(nn.Module):
-    """ Make VGG model without classifier"""
+    """ Build VGG model without classifier"""
     def __init__(self,
                  cfg,
                  input_channels = 3,
@@ -43,6 +38,8 @@ class VGGBackbone(nn.Module):
         in_channels = self.input_channels
         for v in self.build:
             if v == 'M':
+                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            elif v == 'C':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)]
             else:
                 v = int(v)
