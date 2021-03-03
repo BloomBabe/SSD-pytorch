@@ -19,11 +19,11 @@ class VGGBackbone(nn.Module):
     """ Build VGG model without classifier"""
     def __init__(self,
                  cfg,
-                 input_channels = 3,
+                 in_channels = 3,
                  pretrained = True):
         super(VGGBackbone, self).__init__()
         self.cfg = cfg 
-        self.input_channels = input_channels
+        self.in_channels = in_channels
         self.batch_norm = bool(self.cfg['batch_norm'])
         self.url = str(self.cfg['url'])
         self.build = self.cfg['cfg']
@@ -35,7 +35,7 @@ class VGGBackbone(nn.Module):
     def _make_layers(self):
         # https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
         layers: List[nn.Module] = []
-        in_channels = self.input_channels
+        input_channels = self.in_channels
         for v in self.build:
             if v == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -43,12 +43,12 @@ class VGGBackbone(nn.Module):
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)]
             else:
                 v = int(v)
-                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+                conv2d = nn.Conv2d(input_channels, v, kernel_size=3, padding=1)
                 if self.batch_norm:
                     layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
                 else:
                     layers += [conv2d, nn.ReLU(inplace=True)]
-                in_channels = v
+                input_channels = v
         return nn.Sequential(*layers)
 
     def _init_weights(self):
