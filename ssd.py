@@ -77,8 +77,8 @@ class MultiBox(nn.Module):
 
     def forward(self, list_x):
         assert (len(list_x) == len(self.loc_layers)) and(len(list_x) == len(self.cls_layers))
-        cls_logits = [] 
-        loc_logits = []
+        cls_logits = list() 
+        loc_logits = list()
         for k, cls_layer, loc_layer in enumerate(zip(self.cls_layers, self.loc_layers)):
             assert list_x[k] == self.input_channels[k]
             cls_logits.append(cls_layer(list_x[k]))
@@ -89,13 +89,16 @@ class SSD(nn.Module):
     """ SSD model """
     def __init__(self,
                  num_classes = 100,
+                 mode = 'train',
                  backbone_name = 'vgg16_bn',
                  ssd_layers_name = 'ssd_300'):
         super(SSD, self).__init__()
         self.num_classes = num_classes
+        self.mode = mode
         self.backbone_name = backbone_name
         self.ssd_layers_name = ssd_layers_name
 
+        assert mode in ['train', 'test']
         assert self.backbone_name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 
                                       'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn']
         assert self.ssd_layers_name in ['ssd_300']
@@ -113,14 +116,22 @@ class SSD(nn.Module):
         self.multi_box = MultiBox(self.multibox_cfg, self.num_classes)
 
     def forward(self, x):
-        sources = []
+        sources = list()
+
         conv4, out = self.backbone(x)
         conv4 = self.l2norm(conv4)
         sources.append(conv4)
         outs = self.ssd_layers(out)
         for out in outs:
             sources.append(out)
-        cls_outs, loc_outs = self.multi_box(sources)
 
-        return cls_outs
+        cls_outs, loc_outs = self.multi_box(sources)
+        loc = torch.cat([o.view(o.size(0), -1) for o in loc_outs], 1)
+        conf = torch.cat([o.view(o.size(0), -1) for o in cls_outs], 1)
+
+        if self.mode == 'train':
+            output = (
+                loc.view(loc.size(0), -1, 4),
+                conf.view(conf.size(0), -1, self.num_classes))
+        return output
           
