@@ -17,7 +17,8 @@ class SSDLayers(nn.Module):
         self.cfg = cfg
         self.in_channels = in_channels
         self.layers_block = self._make_layers()
-        
+        self._init_weights()
+
     def _make_layers(self):
         blocks = nn.ModuleList()
         layers: List[nn.Module] = []
@@ -40,6 +41,12 @@ class SSDLayers(nn.Module):
                 layers = []
         return blocks
 
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform(m.weight.data)
+                m.bias.data.zero_()
+
     def forward(self, x):
         out = []
         for layer in self.layers_block:
@@ -60,6 +67,7 @@ class MultiBox(nn.Module):
 
         self.loc_layers = nn.ModuleList(self._make_locreg())
         self.cls_layers = nn.ModuleList(self._make_cls())
+        self._init_weights()
 
     def _make_cls(self):
         """Make classifier heads"""
@@ -74,6 +82,12 @@ class MultiBox(nn.Module):
         for num_box, in_channels in zip(self.num_boxes, self.input_channels):
             layers += [nn.Conv2d(in_channels, 4*num_box, kernel_size=3, padding=1)]
         return layers
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform(m.weight.data)
+                m.bias.data.zero_()
 
     def forward(self, list_x):
         assert (len(list_x) == len(self.loc_layers)) and(len(list_x) == len(self.cls_layers))
