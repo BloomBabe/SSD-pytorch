@@ -7,11 +7,11 @@ import os
 
 
 def vgg_backbone(cfg,
-                 input_channels = 3,
+                 in_channels = 3,
                  pretrained = True):
-    if (input_channels != 3) and pretrained:
+    if (in_channels != 3) and pretrained:
         raise ValueError('There are available weights only for 3 channels models.')
-    model = VGGBackbone(cfg=cfg, input_channels=input_channels,
+    model = VGGBackbone(cfg=cfg, in_channels=in_channels,
                         pretrained=pretrained)
     return model
 

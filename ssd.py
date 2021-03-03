@@ -49,11 +49,41 @@ class SSDLayers(nn.Module):
 
 class MultiBox(nn.Module):
     """ Classifier and box regressor heads"""
-    def __init__(self):
+    def __init__(self,
+                 cfg,
+                 num_classes):
         super(MultiBox, self).__init__()
-    
+        self.num_classes = num_classes
+        self.num_boxes = cfg['num_boxes']
+        self.input_channels = cfg['in_channels']
+        assert len(self.num_boxes) == len(self.input_channels)
+
+        self.loc_layers = nn.ModuleList(self._make_locreg())
+        self.cls_layers = nn.ModuleList(self._make_cls())
+
+    def _make_cls(self):
+        """Make classifier heads"""
+        layers: List[nn.Module] = []
+        for num_box, in_channels in zip(self.num_boxes, self.input_channels):
+            layers += [nn.Conv2d(in_channels, self.num_classes*num_box, kernel_size=3, padding=1)]
+        return layers
+
+    def _make_locreg(self):
+        """Make location regressor heads"""
+        layers: List[nn.Module] = []
+        for num_box, in_channels in zip(self.num_boxes, self.input_channels):
+            layers += [nn.Conv2d(in_channels, 4*num_box, kernel_size=3, padding=1)]
+        return layers
+
     def forward(self, list_x):
-        pass
+        assert (len(list_x) == len(self.loc_layers)) and(len(list_x) == len(self.cls_layers))
+        cls_logits = [] 
+        loc_logits = []
+        for k, cls_layer, loc_layer in enumerate(zip(self.cls_layers, self.loc_layers)):
+            assert list_x[k] == self.input_channels[k]
+            cls_logits.append(cls_layer(list_x[k]))
+            loc_logits.append(loc_layer(list_x[k]))
+        return cls_logits, loc_logits
 
 class SSD(nn.Module):
     """ SSD model """
@@ -75,10 +105,12 @@ class SSD(nn.Module):
             cfgs = json.load(f)
         self.backbone_cfg = cfgs['backbone']
         self.ssd_layers_cfg = cfgs['ssd_layers']
+        self.multibox_cfg = cfgs['multi_box']
 
-        self.backbone = vgg_backbone(self.backbone_cfg[backbone_name], input_channels=3, pretrained=True)
+        self.backbone = vgg_backbone(self.backbone_cfg[backbone_name], in_channels=3, pretrained=True)
         self.l2norm = L2Norm(512, 20)
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name], in_channels=512)  
+        self.multi_box = MultiBox(self.multibox_cfg, self.num_classes)
 
     def forward(self, x):
         sources = []
@@ -88,6 +120,7 @@ class SSD(nn.Module):
         outs = self.ssd_layers(out)
         for out in outs:
             sources.append(out)
+        cls_outs, loc_outs = self.multi_box(sources)
 
-        return sources
+        return cls_outs
           

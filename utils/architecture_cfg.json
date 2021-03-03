@@ -47,7 +47,7 @@
         "ssd_300": [
                     "M", [3, 1, 1],
                     "Conv", [1024, 3, 6, 1, 6],
-                    "Conv", [1024, 1, 0, 1, 1],
+                    "outConv", [1024, 1, 0, 1, 1],
                     "Conv", [256, 1, 0, 1, 1],
                     "outConv", [512, 3, 1, 2, 1],
                     "Conv", [128, 1, 0, 1, 1],
@@ -57,5 +57,11 @@
                     "Conv", [128, 1, 0, 1, 1],
                     "outConv", [256, 3, 1, 1, 1]
                     ]
-        }
+        },
+
+    "multi_box":{
+        "_comment_": "number of boxes per feature map location/ number of input channels",
+        "num_boxes": [4, 6, 6, 6, 4, 4],
+        "in_channels": [512, 1024, 512, 256, 256, 256]
+    }
 }
