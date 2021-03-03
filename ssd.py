@@ -2,6 +2,7 @@ import torch
 import numpy as np 
 import torch.nn as nn
 from utils.backbone_utils import vgg_backbone
+from utils.l2norm import L2Norm
 import json
 import os
 
@@ -46,8 +47,9 @@ class SSDLayers(nn.Module):
             out.append(x)
         return out
 
-class SSD(nn.Module):
 
+class SSD(nn.Module):
+    """ SSD model """
     def __init__(self,
                  num_classes = 100,
                  backbone_name = 'vgg16_bn',
@@ -69,10 +71,12 @@ class SSD(nn.Module):
         self.ssd_layers_cfg = cfgs['ssd_layers']
 
         self.backbone = vgg_backbone(self.backbone_cfg[backbone_name], input_channels=3, pretrained=True)
+        self.l2norm = L2Norm(512, 20)
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name])  
 
     def forward(self, x):
-        out_1, out = self.backbone(x)
+        conv4, out = self.backbone(x)
+        conv4 = self.l2norm(conv4)
         out_2, out_3, out_4, out_5 = self.ssd_layers(out)
         return out_1, out_2, out_3, out_4, out_5
           
