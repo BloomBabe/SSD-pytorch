@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 from utils.modules.backbone import vgg_backbone
 from utils.modules.l2norm import L2Norm
+from utils.modules.box_head import SSDMultiBox
 import json
 import os
 
@@ -54,55 +55,11 @@ class SSDLayers(nn.Module):
             out.append(x)
         return out
 
-class MultiBox(nn.Module):
-    """ Classifier and box regressor heads"""
-    def __init__(self,
-                 cfg,
-                 num_classes):
-        super(MultiBox, self).__init__()
-        self.num_classes = num_classes
-        self.num_boxes = cfg['num_boxes']
-        self.input_channels = cfg['in_channels']
-        assert len(self.num_boxes) == len(self.input_channels)
-
-        self.loc_layers = nn.ModuleList(self._make_locreg())
-        self.cls_layers = nn.ModuleList(self._make_cls())
-        self._init_weights()
-
-    def _make_cls(self):
-        """Make classifier heads"""
-        layers: List[nn.Module] = []
-        for num_box, in_channels in zip(self.num_boxes, self.input_channels):
-            layers += [nn.Conv2d(in_channels, self.num_classes*num_box, kernel_size=3, padding=1)]
-        return layers
-
-    def _make_locreg(self):
-        """Make location regressor heads"""
-        layers: List[nn.Module] = []
-        for num_box, in_channels in zip(self.num_boxes, self.input_channels):
-            layers += [nn.Conv2d(in_channels, 4*num_box, kernel_size=3, padding=1)]
-        return layers
-
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight.data)
-                m.bias.data.zero_()
-
-    def forward(self, list_x):
-        assert (len(list_x) == len(self.loc_layers)) and(len(list_x) == len(self.cls_layers))
-        cls_logits = list() 
-        loc_logits = list()
-        for k, cls_layer, loc_layer in enumerate(zip(self.cls_layers, self.loc_layers)):
-            assert list_x[k] == self.input_channels[k]
-            cls_logits.append(cls_layer(list_x[k]))
-            loc_logits.append(loc_layer(list_x[k]))
-        return cls_logits, loc_logits
 
 class SSD(nn.Module):
     """ SSD model """
     def __init__(self,
-                 num_classes = 100,
+                 num_classes = 101,
                  mode = 'train',
                  backbone_name = 'vgg16_bn',
                  ssd_layers_name = 'ssd_300'):
@@ -127,7 +84,7 @@ class SSD(nn.Module):
         self.backbone = vgg_backbone(self.backbone_cfg[backbone_name], in_channels=3, pretrained=True)
         self.l2norm = L2Norm(512, 20)
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name], in_channels=512)  
-        self.multi_box = MultiBox(self.multibox_cfg, self.num_classes)
+        self.multi_box = SSDMultiBox(self.multibox_cfg, self.num_classes)
 
     def forward(self, x):
         sources = list()
@@ -139,13 +96,6 @@ class SSD(nn.Module):
         for out in outs:
             sources.append(out)
 
-        cls_outs, loc_outs = self.multi_box(sources)
-        loc = torch.cat([o.view(o.size(0), -1) for o in loc_outs], 1)
-        conf = torch.cat([o.view(o.size(0), -1) for o in cls_outs], 1)
-
-        if self.mode == 'train':
-            output = (
-                loc.view(loc.size(0), -1, 4),
-                conf.view(conf.size(0), -1, self.num_classes))
-        return output
+        cls_logits, box_preds = self.multi_box(sources)
+        return cls_logits, box_preds
           
