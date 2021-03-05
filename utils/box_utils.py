@@ -13,10 +13,10 @@ def cxcy_to_xy(bboxes):
 def area_of(left_top, right_bottom):
     """Compute the areas of rectangles given two corners.
     Args:
-        left_top (N, 2): left top corner.
-        right_bottom (N, 2): right bottom corner.
+        left_top (..., 2): left top corner.
+        right_bottom (..., 2): right bottom corner.
     Returns:
-        area (N): return the area.
+        area (...): return the area.
     """
     hw = torch.clamp(right_bottom - left_top, min=0.0)
     return hw[..., 0] * hw[..., 1]
