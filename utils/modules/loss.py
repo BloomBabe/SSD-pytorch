@@ -18,16 +18,18 @@ class MultiBoxLoss(nn.Module):
     """
     def __init__(self,
                  default_boxes,
+                 device,
                  threshold = 0.5,
                  neg_pos = 3,
                  alpha = 1.):
         super(MultiBoxLoss, self).__init__()
         self.default_boxes = default_boxes
+        self.device = device
         self.threshold = threshold
         self.neg_pos = neg_pos
         self.alpha = alpha
 
-    def forward(self, loc_pred, cls_pred, boxes, labels):
+    def forward(self, loc_pred, cls_pred, gt_boxes, gt_labels):
         """
             Forward propagation
             loc_pred: Pred location, a tensor of dimensions (N, 8732, 4)
@@ -37,4 +39,15 @@ class MultiBoxLoss(nn.Module):
             
             Out: Mutilbox loss
         """
-        
+        batch_size = loc_pred.size(0)
+        num_classes = cls_pred.size(2)
+        default_boxes_xy = cxcy_to_xy(default_boxes)
+        for i in range(batch_size):
+            n_objects = gt_boxes[i].size(0)
+            overlaps = compute_iou(gt_boxes[i], default_boxes_xy) # iou size:(num_gt_boxes, num_default_boxes)
+            overlaps_per_default_box, objects_per_default_box = overlaps.max(dim=0) 
+            _, defaults_per_gt_boxes = overlaps.max(dim=1)
+            objects_per_default_box[defaults_per_gt_boxes] = torch.LongTensor(range(n_objects)).to(self.device)
+            overlaps_per_default_box[defaults_per_gt_boxes] = 1.
+
+
