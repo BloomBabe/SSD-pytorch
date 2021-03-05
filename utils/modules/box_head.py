@@ -42,7 +42,6 @@ class SSDMultiBox(nn.Module):
                 m.bias.data.zero_()
 
     def _init_default_boxes(self):
-        self.aspect_ratios = [[1., a, 1/a] for a in self.aspect_ratios]
         assert len(self.aspect_ratios)==len(self.fmap_wh)
         assert len(self.aspect_ratios)==len(self.scales)
         default_boxes = []
