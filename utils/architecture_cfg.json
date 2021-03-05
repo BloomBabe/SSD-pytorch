@@ -60,8 +60,11 @@
         },
 
     "multi_box":{
-        "_comment_": "number of boxes per feature map location/ number of input channels",
+        "_comment_": "number of boxes per feature map location",
         "num_boxes": [4, 6, 6, 6, 4, 4],
-        "in_channels": [512, 1024, 512, 256, 256, 256]
+        "in_channels": [512, 1024, 512, 256, 256, 256],
+        "fmap_wh": [38, 19, 10, 5, 3, 1],
+        "aspect_ratios":[[2], [2, 3], [2, 3], [2, 3], [2, 3], [2], [2]],
+        "scales": [0.1, 0.2, 0.375, 0.55, 0.725, 0.9]
     }
 }
