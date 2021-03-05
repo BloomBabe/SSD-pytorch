@@ -62,13 +62,15 @@ class SSD(nn.Module):
                  num_classes = 101,
                  mode = 'train',
                  backbone_name = 'vgg16_bn',
-                 ssd_layers_name = 'ssd_300'):
+                 ssd_layers_name = 'ssd_300',
+                 device=None):
         super(SSD, self).__init__()
         self.num_classes = num_classes
         self.mode = mode
         self.backbone_name = backbone_name
         self.ssd_layers_name = ssd_layers_name
-
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         assert mode in ['train', 'test']
         assert self.backbone_name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 
                                       'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn']
@@ -84,7 +86,7 @@ class SSD(nn.Module):
         self.backbone = vgg_backbone(self.backbone_cfg[backbone_name], in_channels=3, pretrained=True)
         self.l2norm = L2Norm(512, 20)
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name], in_channels=512)  
-        self.multi_box = SSDMultiBox(self.multibox_cfg, self.num_classes)
+        self.multi_box = SSDMultiBox(self.multibox_cfg, self.num_classes, self.device)
 
     def forward(self, x):
         sources = list()

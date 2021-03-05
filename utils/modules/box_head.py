@@ -1,4 +1,5 @@
 import torch
+import math
 import numpy as np 
 import torch.nn as nn
 
@@ -6,7 +7,8 @@ class SSDMultiBox(nn.Module):
     """ Classifier and box regressor heads"""
     def __init__(self,
                  cfg,
-                 num_classes):
+                 num_classes,
+                 device):
         super(SSDMultiBox, self).__init__()
         self.num_classes = num_classes
         self.num_boxes = cfg['num_boxes']
@@ -14,6 +16,7 @@ class SSDMultiBox(nn.Module):
         self.fmap_wh = cfg['fmap_wh']
         self.aspect_ratios = cfg['aspect_ratios']
         self.scales = cfg['scales']
+        self.device = device
         assert len(self.num_boxes) == len(self.input_channels)
 
         self.reg_layers = nn.ModuleList(self._make_locreg())
@@ -58,12 +61,12 @@ class SSDMultiBox(nn.Module):
                         
                         if ratio == 1:
                             try:
-                                add_scale = math.sqrt(self.scales[k]*self.scales[fmaps[k+1]])
+                                add_scale = math.sqrt(self.scales[k]*self.scales[k+1])
                             except IndexError:
                                 #for the last feature map
                                 add_scale = 1.
                             default_boxes.append([cx, cy, add_scale, add_scale])
-        default_boxes = torch.FloatTensor(default_boxes).to(device) #(8732, 4)
+        default_boxes = torch.FloatTensor(default_boxes).to(self.device)
         default_boxes.clamp_(0, 1)
         return default_boxes
 
