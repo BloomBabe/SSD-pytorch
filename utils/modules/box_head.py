@@ -58,7 +58,6 @@ class SSDMultiBox(nn.Module):
                         #(cx, cy, w, h)
                         default_boxes.append([cx, cy, self.scales[k]* math.sqrt(k), 
                                               self.scales[k]/math.sqrt(ratio)]) 
-                        
                         if ratio == 1:
                             try:
                                 add_scale = math.sqrt(self.scales[k]*self.scales[k+1])
@@ -69,7 +68,6 @@ class SSDMultiBox(nn.Module):
         default_boxes = torch.FloatTensor(default_boxes).to(self.device)
         default_boxes.clamp_(0, 1)
         return default_boxes
-
 
     def forward(self, list_x):
         assert (len(list_x) == len(self.reg_layers)) and(len(list_x) == len(self.cls_layers))
