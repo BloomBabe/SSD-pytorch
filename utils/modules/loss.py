@@ -71,10 +71,35 @@ class MultiBoxLoss(nn.Module):
 
         #Localization loss
         #Localization loss is computed only over positive default boxes
-        pos_idx = pos.unsqueeze(2).expand_as(loc_data)
-        loc_p = loc_data[pos_idx].view(-1, 4)
+        pos_idx = pos.unsqueeze(2).expand_as(loc_pred)
+        loc_p = loc_pred[pos_idx].view(-1, 4)
         loc_t = loc_t[pos_idx].view(-1, 4)
         loc_loss = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
 
-        
+        # Compute max conf across batch for hard negative mining
+        batch_conf = cls_pred.view(-1, self.num_classes)
+        cls_loss = torch.logsumexp(batch_conf, 1, keepdim=True)) - batch_conf.gather(1, conf_t.view(-1, 1))
+
+        # Hard Negative Mining
+        cls_loss[pos] = 0  # filter out pos boxes for now
+        cls_loss = cls_loss.view(num, -1)
+        _, loss_idx = cls_loss.sort(1, descending=True)
+        _, idx_rank = loss_idx.sort(1)
+        num_pos = pos.long().sum(1, keepdim=True)
+        num_neg = torch.clamp(self.neg_pos*num_pos, max=pos.size(1)-1)
+        neg = idx_rank < num_neg.expand_as(idx_rank)
+
+        # Confidence Loss Including Positive and Negative Examples
+        pos_idx = pos.unsqueeze(2).expand_as(conf_data)
+        neg_idx = neg.unsqueeze(2).expand_as(conf_data)
+        conf_p = conf_data[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
+        targets_weighted = conf_t[(pos+neg).gt(0)]
+        cls_loss = F.cross_entropy(conf_p, targets_weighted, size_average=False)
+
+        # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
+
+        N = num_pos.data.sum()
+        loc_loss /= N
+        cls_loss /= N
+        return loc_loss, cls_loss
 
