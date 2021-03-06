@@ -9,6 +9,15 @@ def cxcy_to_xy(bboxes):
     return torch.cat([bboxes[..., :2] - (bboxes[..., 2:]/2),
                       bboxes[..., :2] + (bboxes[..., 2:]/2)], 1)
 
+def xy_to_cxcy(bboxes):
+    '''
+        Convert bboxes from (xmin, ymin, xmax, ymax) to (cx, cy, w, h)
+        bboxes: Bounding boxes, a tensor of dimensions (n_object, 4)
+        
+        Out: bboxes in center coordinate
+    '''
+    return torch.cat([(bboxes[:, 2:] + bboxes[:, :2]) / 2,
+                      bboxes[:, 2:] - bboxes[:, :2]], 1)
 
 def area_of(left_top, right_bottom):
     """Compute the areas of rectangles given two corners.
@@ -52,3 +61,12 @@ def compute_iou(boxes0, boxes1, eps=1e-5):
     area0 = area_of(boxes0[..., :2], boxes0[..., 2:]).unsqueeze(1).expand_as(overlap_area)
     area1 = area_of(boxes1[..., :2], boxes1[..., 2:]).unsqueeze(0).expand_as(overlap_area)
     return overlap_area / (area0 + area1 - overlap_area + eps)
+
+def encode_bboxes(bboxes,  default_boxes):
+    '''
+        Encode bboxes correspoding default boxes (center form)
+        
+        Out: Encodeed bboxes to 4 offset, a tensor of dimensions (n_defaultboxes, 4)
+    '''
+    return torch.cat([(bboxes[:, :2] - default_boxes[:, :2]) / (default_boxes[:, 2:] / 10),
+                      torch.log(bboxes[:, 2:] / default_boxes[:, 2:]) *5],1)
