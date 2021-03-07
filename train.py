@@ -1,4 +1,5 @@
 import argparse
+from utils.modules.loss import MultiBoxLoss
 from ssd import *
 
 ap = argparse.ArgumentParser()
@@ -16,7 +17,8 @@ ap.add_argument("--adjust_optim", default = None, help = "Adjust optimizer for c
 args = ap.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+num_classes = 101
+cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
 batch_size = args.batch_size  # batch size
 iterations = args.iterations  # number of iterations to train
@@ -28,3 +30,29 @@ decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learni
 momentum = args.momentum  # momentum
 weight_decay = args.weight_decay
 grad_clip = args.grad_clip
+
+global start_epoch, label_map, epoch, checkpoint, decay_lr_at
+#Init model or load checkpoint
+if checkpoint is None:
+    start_epoch= 0
+    with open(self.cfg_pth) as f:
+        cfgs = json.load(f)
+    model = SSD(num_classes=num_classes, cfgs=cfg, device=device)
+    optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, 
+                          weight_decay = weight_decay)
+else:
+    checkpoint = torch.load(checkpoint)
+    start_epoch = checkpoint['epoch'] + 1   
+    print('\nLoaded checkpoint from epoch %d.\n' % start_epoch)
+    model = checkpoint['model']
+    optimizer = checkpoint['optimizer']
+    if args.adjust_optim is not None:
+        print("Adjust optimizer....")
+        print(args.lr)
+        optimizer = optim.SGD(model.parameters(),lr = lr, momentum = momentum, 
+                              weight_decay = weight_decay)
+model = model.to(device)
+criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
+
+
+

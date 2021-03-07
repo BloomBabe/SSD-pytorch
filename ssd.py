@@ -59,26 +59,26 @@ class SSDLayers(nn.Module):
 class SSD(nn.Module):
     """ SSD model """
     def __init__(self,
+                 cfgs,
                  num_classes = 101,
-                 mode = 'train',
+                 #mode = 'train',
                  backbone_name = 'vgg16_bn',
                  ssd_layers_name = 'ssd_300',
                  device=None):
         super(SSD, self).__init__()
         self.num_classes = num_classes
-        self.mode = mode
+        #self.mode = mode
         self.backbone_name = backbone_name
         self.ssd_layers_name = ssd_layers_name
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        assert mode in ['train', 'test']
+        #assert mode in ['train', 'test']
         assert self.backbone_name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 
                                       'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn']
         assert self.ssd_layers_name in ['ssd_300']
 
         self.file_pth = os.path.join(BASE_DIR,'utils/architecture_cfg.json')
-        with open(self.file_pth) as f:
-            cfgs = json.load(f)
+        
         self.backbone_cfg = cfgs['backbone']
         self.ssd_layers_cfg = cfgs['ssd_layers']
         self.multibox_cfg = cfgs['multi_box']
@@ -87,7 +87,7 @@ class SSD(nn.Module):
         self.l2norm = L2Norm(512, 20)
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name], in_channels=512)  
         self.multi_box = SSDMultiBox(self.multibox_cfg, self.num_classes, self.device)
-
+        self.default_bboxes = self.multi_box.default_boxes
     def forward(self, x):
         sources = list()
 
