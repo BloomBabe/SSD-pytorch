@@ -17,7 +17,7 @@ ap.add_argument("--adjust_optim", default = None, help = "Adjust optimizer for c
 args = ap.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = 101
+num_classes = 4
 cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
 batch_size = args.batch_size  # batch size
