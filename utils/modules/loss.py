@@ -53,53 +53,59 @@ class MultiBoxLoss(nn.Module):
         for i in range(batch_size):
             n_objects = gt_boxes[i].size(0)
             overlaps = compute_iou(gt_boxes[i], default_boxes_xy) # iou size:(num_gt_boxes, num_default_boxes)
-            overlaps_per_default_box, objects_per_default_box = overlaps.max(dim=0) 
-            _, defaults_per_gt_boxes = overlaps.max(dim=1)
-            objects_per_default_box[defaults_per_gt_boxes] = torch.LongTensor(range(n_objects)).to(self.device)
-            overlaps_per_default_box[defaults_per_gt_boxes] = 1.
-            label_each_default_box = gt_labels[i][objects_per_default_box]
-            label_each_default_box[overlaps_per_default_box < self.threshold] = 0
+            
+            # Find the gt_bboxes idxes corresponding to default bboxes by IoU
+            best_truth_overlap, best_truth_idx  = overlaps.max(dim=0) 
+
+            # For gt_bboxes, we find the indices of default bboxes corresponding
+            # to them according to IoU (best_default_idx), and for these default
+            # bboxes we replace the previous indices (in best_truth_idx) with 
+            # these indices of the best boxes 
+            best_default_overlap, best_default_idx = overlaps.max(dim=1)
+            best_truth_idx[best_default_idx] = torch.LongTensor(range(n_objects)).to(self.device)
+
+            # For the found pairs of gt_bboxes and default ones, replace them IoU by 1.
+            best_truth_overlap[best_default_idx] = 1.
+            
+            label_each_default_box = gt_labels[i][best_truth_idx]
+            label_each_default_box[best_truth_overlap < self.threshold] = 0
             
             conf_t[i] = label_each_default_box
-            loc_t[i] = encode_bboxes(xy_to_cxcy(gt_boxes[i][object_each_default_box]), self.default_boxes)
+            loc_t[i] = encode_bboxes(xy_to_cxcy(gt_boxes[i][best_truth_idx]), self.default_boxes)
         
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)
 
-        pos = conf_t > 0
-        num_pos = pos.sum(dim=1, keepdim=True)
-
         #Localization loss
         #Localization loss is computed only over positive default boxes
-        pos_idx = pos.unsqueeze(2).expand_as(loc_pred)
-        loc_p = loc_pred[pos_idx].view(-1, 4)
-        loc_t = loc_t[pos_idx].view(-1, 4)
-        loc_loss = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
+        smooth_L1_loss = nn.SmoothL1Loss()
+        loc_loss = smooth_L1_loss(locs_pred[pos_default_boxes], t_locs[pos_default_boxes])
 
-        # Compute max conf across batch for hard negative mining
-        batch_conf = cls_pred.view(-1, self.num_classes)
-        cls_loss = torch.logsumexp(batch_conf, 1, keepdim=True)) - batch_conf.gather(1, conf_t.view(-1, 1))
+        pos_default_boxes  = conf_t > 0
 
-        # Hard Negative Mining
-        cls_loss[pos] = 0  # filter out pos boxes for now
-        cls_loss = cls_loss.view(num, -1)
-        _, loss_idx = cls_loss.sort(1, descending=True)
-        _, idx_rank = loss_idx.sort(1)
-        num_pos = pos.long().sum(1, keepdim=True)
-        num_neg = torch.clamp(self.neg_pos*num_pos, max=pos.size(1)-1)
-        neg = idx_rank < num_neg.expand_as(idx_rank)
-
-        # Confidence Loss Including Positive and Negative Examples
-        pos_idx = pos.unsqueeze(2).expand_as(conf_data)
-        neg_idx = neg.unsqueeze(2).expand_as(conf_data)
-        conf_p = conf_data[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
-        targets_weighted = conf_t[(pos+neg).gt(0)]
-        cls_loss = F.cross_entropy(conf_p, targets_weighted, size_average=False)
-
-        # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
-
-        N = num_pos.data.sum()
-        loc_loss /= N
-        cls_loss /= N
-        return loc_loss, cls_loss
+        #number of positive ad hard-negative default boxes per image
+        n_positive = pos_default_boxes.sum(dim= 1)
+        n_hard_negatives = self.neg_pos * n_positive
+        
+        #Find the loss for all priors
+        cross_entropy_loss = nn.CrossEntropyLoss(reduce= False)
+        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), t_classes.view(-1))    #(N*8732)
+        confidence_loss_all = confidence_loss_all.view(batch_size, n_default_boxes)    #(N, 8732)
+        
+        confidence_pos_loss = confidence_loss_all[pos_default_boxes]
+        
+        #Find which priors are hard-negative
+        confidence_neg_loss = confidence_loss_all.clone()    #(N, 8732)
+        confidence_neg_loss[pos_default_boxes] = 0.
+        confidence_neg_loss, _ = confidence_neg_loss.sort(dim= 1, descending= True)
+        
+        hardness_ranks = torch.LongTensor(range(n_default_boxes)).unsqueeze(0).expand_as(confidence_neg_loss).to(device)  # (N, 8732)
+        
+        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)  # (N, 8732)
+        
+        confidence_hard_neg_loss = confidence_neg_loss[hard_negatives]
+        
+        confidence_loss = (confidence_hard_neg_loss.sum() + confidence_pos_loss.sum()) / n_positive.sum().float()
+        
+        return self.alpha * loc_loss + confidence_loss
 
