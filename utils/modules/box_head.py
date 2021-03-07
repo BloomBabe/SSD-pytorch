@@ -41,7 +41,7 @@ class SSDMultiBox(nn.Module):
     def _init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight.data)
+                nn.init.xavier_uniform_(m.weight.data)
                 m.bias.data.zero_()
 
     def _init_default_boxes(self):

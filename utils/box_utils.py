@@ -70,3 +70,44 @@ def encode_bboxes(bboxes,  default_boxes):
     '''
     return torch.cat([(bboxes[:, :2] - default_boxes[:, :2]) / (default_boxes[:, 2:] / 10),
                       torch.log(bboxes[:, 2:] / default_boxes[:, 2:]) *5],1)
+
+def combine(batch):
+    """
+        Combine these tensors of different sizes in batch.
+        batch: an iterable of N sets from __getitem__()
+    """
+    images = []
+    boxes = []
+    labels = []
+    
+    for b in batch:
+        images.append(b[0])
+        boxes.append(b[1])
+        labels.append(b[2])
+        
+    images = torch.stack(images, dim= 0)
+    return images, boxes, labels
+
+def adjust_lr(optimizer, scale):
+    """
+        Scale learning rate by a specified factor
+        optimizer: optimizer
+        scale: factor to multiply learning rate with.
+    """
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr'] * scale
+    print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))
+
+def save_checkpoint(epoch, model, optimizer):
+    """
+        Save model checkpoint
+    """
+    state = {'epoch': epoch, "model": model, "optimizer": optimizer}
+    filename = "model_state_ssd300.pth.tar"
+    torch.save(state, filename)
+    
+def clip_grad(optimizer, grad_clip):
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)

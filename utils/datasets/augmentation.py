@@ -16,7 +16,7 @@ class ToTensor(object):
 class Normalize(object):
     def __init__(self, 
                  mean = [0.485, 0.456, 0.406],
-                 std = [0.229, 0.224, 0.225])
+                 std = [0.229, 0.224, 0.225]):
         self.mean = mean 
         self.std = std 
 
@@ -61,7 +61,7 @@ class RandomFlip(object):
         new_boxes[:, 0] = width - boxes[:, 0]
         new_boxes[:, 2] = width - boxes[:, 2]
         new_boxes[:, 1] = height - boxes[:, 1] 
-        new_boxes[:, 13 = height - boxes[:, 3] 
+        new_boxes[:, 3] = height - boxes[:, 3] 
         new_boxes = new_boxes[:, [2, 3, 0, 1]]
         return image, new_boxes, labels
 
@@ -218,6 +218,25 @@ class RandomCrop(object):
 
                 return new_image, current_boxes, current_labels
 
+class Compose(object):
+    """Composes several augmentations together.
+    Args:
+        transforms (List[Transform]): list of transforms to compose.
+    Example:
+        >>> augmentations.Compose([
+        >>>     transforms.CenterCrop(10),
+        >>>     transforms.ToTensor(),
+        >>> ])
+    """
+
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, img, boxes=None, labels=None):
+        for t in self.transforms:
+            img, boxes, labels = t(img, boxes, labels)
+        return img, boxes, labels
+        
 class SSDAugmentation(object):
     def __init__(self, size=300, mean = [0.485, 0.456, 0.406],
                  std = [0.229, 0.224, 0.225]):

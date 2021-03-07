@@ -45,7 +45,7 @@ class SSDLayers(nn.Module):
     def _init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight.data)
+                nn.init.xavier_uniform_(m.weight.data)
                 m.bias.data.zero_()
 
     def forward(self, x):
@@ -67,6 +67,7 @@ class SSD(nn.Module):
                  device=None):
         super(SSD, self).__init__()
         self.num_classes = num_classes
+        self.device = device
         #self.mode = mode
         self.backbone_name = backbone_name
         self.ssd_layers_name = ssd_layers_name

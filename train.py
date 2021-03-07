@@ -1,9 +1,12 @@
 import argparse
+import torch.optim as optim
 from utils.modules.loss import MultiBoxLoss
+from utils.datasets.hhwd import HHWDataset
+from utils.box_utils import *
 from ssd import *
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default= "./JSONdata/", help= "Dataroot directory path")
+ap.add_argument("--dataset_root", default= "/content/", help="Dataroot directory path")
 ap.add_argument("--cfg_root", default= "./utils/architecture_cfg.json", help= "Cfg file path")
 ap.add_argument("--batch_size", default= 8, type= int, help= "Batch size for training")
 ap.add_argument("--num_workers", default= 1, type= int, help = "Number of workers")
@@ -16,7 +19,10 @@ ap.add_argument("--grad_clip", default = None, help= "Gradient clip for large ba
 ap.add_argument("--adjust_optim", default = None, help = "Adjust optimizer for checkpoint model")
 args = ap.parse_args()
 
+global start_epoch, label_map, epoch, checkpoint, decay_lr_at
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+data_folder = args.dataset_root
 num_classes = 4
 cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
@@ -31,12 +37,11 @@ momentum = args.momentum  # momentum
 weight_decay = args.weight_decay
 grad_clip = args.grad_clip
 
-global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 #Init model or load checkpoint
 if checkpoint is None:
     start_epoch= 0
-    with open(self.cfg_pth) as f:
-        cfgs = json.load(f)
+    with open(cfg_pth) as f:
+        cfg = json.load(f)
     model = SSD(num_classes=num_classes, cfgs=cfg, device=device)
     optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, 
                           weight_decay = weight_decay)
@@ -53,6 +58,37 @@ else:
                               weight_decay = weight_decay)
 model = model.to(device)
 criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
+train_dataset = HHWDataset(data_folder, mode = "train")
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
+                                            shuffle=True, collate_fn=combine,
+                                            num_workers=workers, pin_memory=True)
 
+epochs = iterations // (len(train_dataset) // batch_size)
+decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
+    
+for epoch in range(start_epoch, epochs):
+    if epoch in decay_lr_at:
+        print("Decay learning rate...")
+        adjust_lr(optimizer, decay_lr_to)
+    
+    model.train()
+    for i, (images, boxes, labels) in enumerate(train_loader):
+        image = images.to(device)
+        boxes = [bbox.to(device) for bbox in boxes]
+        labels = [label.to(device) for label in labels]
 
+        cls_pred, locs_pred = model(images)
+        loss = criterion(locs_pred, cls_pred, boxes, labels)
+        print(loss)
+        #Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        
+        if grad_clip is not None:
+            clip_grad(optimizer, grad_clip)
+            
+        optimizer.step()
+        
+        # if i % print_freq == 0:
+        #     print('Epoch: [{0}][{1}/{2}]\t' 'Loss {loss.val:.4f} ( Average Loss per epoch: {loss.avg:.4f})\t'.format(epoch, i, len(train_loader), loss=losses))
 

@@ -7,8 +7,10 @@ import torch
 from torch.utils.data import Dataset
 import json
 import os
+import numpy as np 
 from PIL import Image
 from pycocotools.coco import COCO
+from utils.datasets.augmentation import SSDAugmentation
 
 class COCOAnnotationTransform(object):
     """Transforms a COCO annotation into a Tensor of bbox coords and label index
@@ -39,6 +41,8 @@ class COCOAnnotationTransform(object):
                 res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]
             else:
                 print("no bbox problem!")
+        print(res[:, :4])
+        print(res[:, 4])
         return np.asarray(res[:, :4]),  np.asarray(res[:, 4]) # [xmin, ymin, xmax, ymax] [label_idx]
 
 
@@ -46,7 +50,7 @@ class HHWDataset(Dataset):
 
     def __init__(self,
                  dataset_pth,
-                 transform = None,
+                 transform = SSDAugmentation(),
                  target_transform = COCOAnnotationTransform(),
                  mode = 'train'):
         super(HHWDataset, self).__init__()
@@ -73,14 +77,13 @@ class HHWDataset(Dataset):
         img = Image.open(path, mode= "r")
         img = img.convert("RGB")
         height, width = img.size
+        
+        boxes, labels = self.target_transform(target, width, height)
+        boxes = torch.from_numpy(boxes)
+        labels = torch.from_numpy(labels)
 
-        if self.target_transform is not None:
-            boxes, labels = self.target_transform(target, width, height)
-            boxes = torch.from_numpy(boxes)
-            labels = torch.from_numpy(labels)
         if self.transform is not None:
             target = np.array(target)
             img, boxes, labels = self.transform(img, boxes, labels)
-            target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
 
-        return img, target
+        return img, boxes, labels
