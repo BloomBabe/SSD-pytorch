@@ -39,7 +39,7 @@ class COCOAnnotationTransform(object):
                 res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]
             else:
                 print("no bbox problem!")
-        return res  # [[xmin, ymin, xmax, ymax, label_idx], ... ]
+        return np.asarray(res[:, :4]),  np.asarray(res[:, 4]) # [xmin, ymin, xmax, ymax] [label_idx]
 
 
 class HHWDataset(Dataset):
@@ -72,14 +72,15 @@ class HHWDataset(Dataset):
         assert os.path.exists(path), f'Image path does not exist: {path}'
         img = Image.open(path, mode= "r")
         img = img.convert("RGB")
-        height, width, _ = img.shape
+        height, width = img.size
 
         if self.target_transform is not None:
-            target = self.target_transform(target, width, height)
+            boxes, labels = self.target_transform(target, width, height)
+            boxes = torch.from_numpy(boxes)
+            labels = torch.from_numpy(labels)
         if self.transform is not None:
             target = np.array(target)
-            img, boxes, labels = self.transform(img, target[:, :4],
-                                                target[:, 4])
+            img, boxes, labels = self.transform(img, boxes, labels)
             target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
 
-        return torch.from_numpy(img).permute(2, 0, 1), target
+        return img, target

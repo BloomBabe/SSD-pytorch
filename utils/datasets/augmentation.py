@@ -92,14 +92,33 @@ class LightNoise(object):
         return image, boxes, labels
 
 class Expand(object):
-    def __init__(self, max_scale = 4):
+    def __init__(self, max_scale = 4, mean=[0.485, 0.456, 0.406]):
         self.max_scale = max_scale
 
     def __call__(self, image, boxes, labels=None):
         image = TF.to_tensor(image)
-        height, width = image.size(0), image.size(1)
+        height, width = image.size(1), image.size(2)
+        scale = random.uniform(1, self.max_scale)
+        new_h = int(scale*height)
+        new_w = int(scale*width)
+
+        filler = torch.FloatTensor(mean) #(3)
+        new_image = torch.ones((3, new_h, new_w), dtype=torch.float) * filler.unsqueeze(1).unsqueeze(1)
+
+        # Place the original image at random coordinates 
+        #in this new image (origin at top-left of image)
+        left = random.randint(0, new_w - width)
+        right = left + original_w
+        top = random.randint(0, new_h - height)
+        bottom = top + original_h
+
+        new_image[:, top:bottom, left:right] = image
+
+        #Adjust bounding box
+        new_boxes = boxes + torch.FloatTensor([left, top, left, top]).unsqueeze(0)
+
         image = TF.to_pil_image(image)
-        return image, boxes, labels
+        return new_image, new_boxes, labels
 
 class SSDAugmentation(object):
     def __init__(self, size=300, mean=(104, 117, 123)):
