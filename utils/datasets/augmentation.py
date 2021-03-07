@@ -26,9 +26,9 @@ class Normalize(object):
 class Distort(object):
     """
     Distort brightness, contrast, saturation
-    image: A PIL image
+    image: A PIL/Tensor image
     
-    Out: New image (PIL)
+    Out: New image (PIL/Tensor)
     """
     def __call__(self, image, boxes=None, labels=None):
         distortions = [TF.adjust_brightness,
@@ -42,7 +42,64 @@ class Distort(object):
                 image = function(image, adjust_factor)       
         return image, boxes, labels
 
-class 
+class RandomFlip(object):
+    """
+    Flip image horizontally.
+    image: a PIL/Tesor image
+    boxes: Bounding boxes, a tensor of dimensions (n_objects, 4)
+    
+    Out: flipped image (A PIL/Tensor image), new boxes
+    """
+    def __call__(self, image, boxes, labels=None):
+        if random.random() > 0.5:
+            return image, boxes, labels 
+        width = image.width
+        height = image.height
+        image = TF.hflip(image)
+        #flip boxes 
+        new_boxes[:, 0] = width - boxes[:, 0]
+        new_boxes[:, 2] = width - boxes[:, 2]
+        new_boxes[:, 1] = height - boxes[:, 1] 
+        new_boxes[:, 13 = height - boxes[:, 3] 
+        new_boxes = new_boxes[:, [2, 3, 0, 1]]
+        return image, new_boxes, labels
+
+class Resize(object):
+    def __init__(self, size=300):
+        self.size = size 
+
+    def __call__(self, image, boxes, labels=None):
+        width = image.width 
+        height = image.height
+        image = TF.resize(image, (self.size, self.size))
+        old_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0)
+        new_boxes = boxes / old_dims  # percent coordinates
+
+        new_dims = torch.FloatTensor([self.size]*4).unsqueeze(0)
+        new_boxes = new_boxes * new_dims
+        return image, new_boxes, labels
+
+class LightNoise(object):
+    def __call__(self, image, boxes=None, labels=None):
+        if random.random() > 0.5:
+            return image, boxes, labels
+        perms = ((0, 1, 2), (0, 2, 1), (1, 0, 2), 
+                 (1, 2, 0), (2, 0, 1), (2, 1, 0))
+        swap = perms[random.randint(0, len(perms) - 1)]
+        image = TF.to_tensor(image)
+        image = image[swap, :, :]
+        image = TF.to_pil_image(image)
+        return image, boxes, labels
+
+class Expand(object):
+    def __init__(self, max_scale = 4):
+        self.max_scale = max_scale
+
+    def __call__(self, image, boxes, labels=None):
+        image = TF.to_tensor(image)
+        height, width = image.size(0), image.size(1)
+        image = TF.to_pil_image(image)
+        return image, boxes, labels
 
 class SSDAugmentation(object):
     def __init__(self, size=300, mean=(104, 117, 123)):
