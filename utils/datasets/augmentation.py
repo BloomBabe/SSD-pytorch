@@ -96,6 +96,8 @@ class Expand(object):
         self.max_scale = max_scale
 
     def __call__(self, image, boxes, labels=None):
+        if random.random() < 0.5:
+            return image, boxes, labels
         image = TF.to_tensor(image)
         height, width = image.size(1), image.size(2)
         scale = random.uniform(1, self.max_scale)
@@ -120,20 +122,28 @@ class Expand(object):
         image = TF.to_pil_image(image)
         return new_image, new_boxes, labels
 
+class RandomCrop(object):
+    def __init__(self):
+        pass
+    def __call__(self):
+        pass
+
+
 class SSDAugmentation(object):
-    def __init__(self, size=300, mean=(104, 117, 123)):
+    def __init__(self, size=300, mean = [0.485, 0.456, 0.406],
+                 std = [0.229, 0.224, 0.225]):
         self.mean = mean
+        self.std = std
         self.size = size
         self.augment = Compose([
-            ConvertFromInts(),
-            ToAbsoluteCoords(),
-            PhotometricDistort(),
-            Expand(self.mean),
-            RandomSampleCrop(),
-            RandomMirror(),
-            ToPercentCoords(),
-            Resize(self.size),
-            SubtractMeans(self.mean)
+            Distort(),
+            LightNoise(),
+            Expand(max_scale=4, mean=mean),
+            RandomCrop(),
+            RandomFlip(),
+            Resize(size=size),
+            ToTensor(),
+            Normalize(mean=mean, std=std)
         ])
 
     def __call__(self, img, boxes, labels):
