@@ -74,12 +74,14 @@ class Resize(object):
     def __init__(self, size=300):
         self.size = size 
 
-    def __call__(self, image, boxes, labels=None):
+    def __call__(self, image, boxes=None, labels=None):
         width = image.width 
         height = image.height
         image = TF.resize(image, (self.size, self.size))
         if type(image) != PIL.Image.Image:
             image = TF.to_pil_image(image)
+        if boxes is None:
+            return image, new_boxes, labels
         old_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0)
         new_boxes = boxes / old_dims  # percent coordinates
 
@@ -262,4 +264,19 @@ class SSDAugmentation(object):
         ])
 
     def __call__(self, img, boxes, labels):
+        return self.augment(img, boxes, labels)
+
+class SSDDetectAug(object):
+    def __init__(self, size=300, mean = [0.485, 0.456, 0.406],
+                 std = [0.229, 0.224, 0.225]):
+        self.mean = mean
+        self.std = std
+        self.size = size
+        self.augment = Compose([
+            Resize(size=size),
+            ToTensor(),
+            Normalize(mean=mean, std=std)
+        ])
+
+    def __call__(self, img, boxes=None, labels=None):
         return self.augment(img, boxes, labels)
