@@ -63,13 +63,19 @@ def compute_iou(boxes0, boxes1, eps=1e-5):
     return overlap_area / (area0 + area1 - overlap_area + eps)
 
 def encode_bboxes(bboxes,  default_boxes):
-    '''
+    """
         Encode bboxes correspoding default boxes (center form)
-        
         Out: Encodeed bboxes to 4 offset, a tensor of dimensions (n_defaultboxes, 4)
-    '''
+    """
     return torch.cat([(bboxes[:, :2] - default_boxes[:, :2]) / (default_boxes[:, 2:] / 10),
                       torch.log(bboxes[:, 2:] / default_boxes[:, 2:]) *5],1)
+
+def decode_bboxes(offsets, default_boxes):
+    """
+        Decode offsets
+    """
+    return torch.cat([offsets[:, :2] * default_boxes[:, 2:] / 10 + default_boxes[:, :2], 
+                      torch.exp(offsets[:, 2:] / 5) * default_boxes[:, 2:]], 1)
 
 def combine(batch):
     """

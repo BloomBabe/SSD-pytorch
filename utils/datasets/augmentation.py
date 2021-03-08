@@ -209,18 +209,15 @@ class RandomCrop(object):
                 # have any valid boxes? try again if not
                 if not mask.any():
                     continue
-
                 # take only matching gt boxes
                 current_boxes = boxes[mask, :].detach().clone()
                 # take only matching gt labels
                 current_labels = labels[mask]
-
                 # should we use the box left and top corner or the crop's
                 current_boxes[:, :2] = torch.max(current_boxes[:, :2],
                                                   crop[:2])
                 # adjust to crop (by substracting crop's left,top)
                 current_boxes[:, :2] -= crop[:2]
-
                 current_boxes[:, 2:] = torch.min(current_boxes[:, 2:],
                                                   crop[2:])
                 # adjust to crop (by substracting crop's left,top)
