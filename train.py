@@ -4,6 +4,8 @@ from utils.modules.loss import MultiBoxLoss
 from utils.datasets.hhwd import HHWDataset
 from utils.box_utils import *
 from ssd import *
+from time import gmtime, strftime
+
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--dataset_root", default= "/content/data/", help="Dataroot directory path")
@@ -37,57 +39,89 @@ momentum = args.momentum  # momentum
 weight_decay = args.weight_decay
 grad_clip = args.grad_clip
 
-#Init model or load checkpoint
-if checkpoint is None:
-    start_epoch= 0
-    with open(cfg_pth) as f:
-        cfg = json.load(f)
-    model = SSD(num_classes=num_classes, cfgs=cfg, device=device)
-    optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, 
-                          weight_decay = weight_decay)
-else:
-    checkpoint = torch.load(checkpoint)
-    start_epoch = checkpoint['epoch'] + 1   
-    print('\nLoaded checkpoint from epoch %d.\n' % start_epoch)
-    model = checkpoint['model']
-    optimizer = checkpoint['optimizer']
-    if args.adjust_optim is not None:
-        print("Adjust optimizer....")
-        print(args.lr)
-        optimizer = optim.SGD(model.parameters(),lr = lr, momentum = momentum, 
-                              weight_decay = weight_decay)
-model = model.to(device)
-criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
-train_dataset = HHWDataset(data_folder, mode = "train")
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
-                                            shuffle=True, collate_fn=combine,
-                                            num_workers=workers, pin_memory=True)
+def clip_grad(optimizer, grad_clip):
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)
 
-epochs = iterations // (len(train_dataset) // batch_size)
-decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
-    
-for epoch in range(start_epoch, epochs):
-    if epoch in decay_lr_at:
-        print("Decay learning rate...")
-        adjust_lr(optimizer, decay_lr_to)
-    
-    model.train()
-    for i, (images, boxes, labels) in enumerate(train_loader):
-        image = images.to(device)
-        boxes = [bbox.to(device) for bbox in boxes]
-        labels = [label.to(device) for label in labels]
+def save_checkpoint(epoch, model, optimizer):
+    """
+        Save model checkpoint
+    """
+    if checkpoint is not None:
+        pth = os.path.dirname(os.path.abspath(checkpoint))
+    else:
+        pth = './checkpoints/'
+        if not os.path.exists(pth):
+            os.makedirs(pth)
+    state = {'epoch': epoch, "model": model, "optimizer": optimizer}
+    current_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+    filename = f"model_state_ssd300_{current_time}.pth.tar"
+    torch.save(state, os.path.join(pth, filename))
 
-        cls_pred, locs_pred = model(images)
-        loss = criterion(locs_pred, cls_pred, boxes, labels)
-        #Backward pass
-        optimizer.zero_grad()
-        loss.backward()
+def adjust_lr(optimizer, scale):
+    """
+        Scale learning rate by a specified factor
+        optimizer: optimizer
+        scale: factor to multiply learning rate with.
+    """
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr'] * scale
+    print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
+
+if __name__ == '__main__':
+    #Init model or load checkpoint
+    if checkpoint is None:
+        start_epoch= 0
+        with open(cfg_pth) as f:
+            cfg = json.load(f)
+        model = SSD(num_classes=num_classes, cfgs=cfg, device=device)
+        optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, 
+                            weight_decay = weight_decay)
+    else:
+        checkpoint = torch.load(checkpoint)
+        start_epoch = checkpoint['epoch'] + 1   
+        print('\nLoaded checkpoint from epoch %d.\n' % start_epoch)
+        model = checkpoint['model']
+        optimizer = checkpoint['optimizer']
+        if args.adjust_optim is not None:
+            print("Adjust optimizer....")
+            print(args.lr)
+            optimizer = optim.SGD(model.parameters(),lr = lr, momentum = momentum, 
+                                weight_decay = weight_decay)
+    model = model.to(device)
+    criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
+    train_dataset = HHWDataset(data_folder, mode = "train")
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
+                                                shuffle=True, collate_fn=combine,
+                                                num_workers=workers, pin_memory=True)
+
+    epochs = iterations // (len(train_dataset) // batch_size)
+    decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
         
-        if grad_clip is not None:
-            clip_grad(optimizer, grad_clip)
+    for epoch in range(start_epoch, epochs):
+        if epoch in decay_lr_at:
+            print("Decay learning rate...")
+            adjust_lr(optimizer, decay_lr_to)
+        
+        model.train()
+        for i, (images, boxes, labels) in enumerate(train_loader):
+            image = images.to(device)
+            boxes = [bbox.to(device) for bbox in boxes]
+            labels = [label.to(device) for label in labels]
+
+            cls_pred, locs_pred = model(images)
+            loss = criterion(locs_pred, cls_pred, boxes, labels)
+            #Backward pass
+            optimizer.zero_grad()
+            loss.backward()
             
-        optimizer.step()
-        
-        # if i % print_freq == 0:
-        #     print('Epoch: [{0}][{1}/{2}]\t' 'Loss {loss.val:.4f} ( Average Loss per epoch: {loss.avg:.4f})\t'.format(epoch, i, len(train_loader), loss=losses))
+            if grad_clip is not None:
+                clip_grad(optimizer, grad_clip)
+                
+            optimizer.step()
+            
+            # if i % print_freq == 0:
+            #     print('Epoch: [{0}][{1}/{2}]\t' 'Loss {loss.val:.4f} ( Average Loss per epoch: {loss.avg:.4f})\t'.format(epoch, i, len(train_loader), loss=losses))
 

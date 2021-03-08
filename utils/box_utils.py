@@ -88,26 +88,7 @@ def combine(batch):
     images = torch.stack(images, dim= 0)
     return images, boxes, labels
 
-def adjust_lr(optimizer, scale):
-    """
-        Scale learning rate by a specified factor
-        optimizer: optimizer
-        scale: factor to multiply learning rate with.
-    """
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = param_group['lr'] * scale
-    print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))
 
-def save_checkpoint(epoch, model, optimizer):
-    """
-        Save model checkpoint
-    """
-    state = {'epoch': epoch, "model": model, "optimizer": optimizer}
-    filename = "model_state_ssd300.pth.tar"
-    torch.save(state, filename)
+
+
     
-def clip_grad(optimizer, grad_clip):
-    for group in optimizer.param_groups:
-        for param in group['params']:
-            if param.grad is not None:
-                param.grad.data.clamp_(-grad_clip, grad_clip)
