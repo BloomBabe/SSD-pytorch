@@ -81,5 +81,4 @@ class SSDMultiBox(nn.Module):
         batch_size = list_x[0].size(0)  
         cls_logits = torch.cat([c.view(c.size(0), -1) for c in cls_logits], dim=1).view(batch_size, -1, self.num_classes)
         box_preds = torch.cat([l.view(l.size(0), -1) for l in box_preds], dim=1).view(batch_size, -1, 4)
-        
         return cls_logits, box_preds

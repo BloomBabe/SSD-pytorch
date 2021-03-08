@@ -71,7 +71,7 @@ class VGGBackbone(nn.Module):
         for i, layer in enumerate(self.features):
             if isinstance(layer, nn.MaxPool2d):
                 num_layer +=1
-            if num_layer == 4:
-                conv4_x = x.detach().clone()
+                if num_layer == 4:
+                    conv4_x = x.detach().clone()
             x = layer(x)
         return conv4_x, x

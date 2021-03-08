@@ -79,7 +79,6 @@ for epoch in range(start_epoch, epochs):
 
         cls_pred, locs_pred = model(images)
         loss = criterion(locs_pred, cls_pred, boxes, labels)
-        print(loss)
         #Backward pass
         optimizer.zero_grad()
         loss.backward()
