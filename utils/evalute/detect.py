@@ -29,14 +29,14 @@ def detect(bboxes_pred,
     cls_scores = F.softmax(cls_pred, dim=2)
     assert num_defaults == bboxes_pred.size(1) == cls_pred.size(1)
 
-    all_image_boxes = []
-    all_image_labels = []
-    all_image_scores = []
+    all_image_boxes = list()
+    all_image_labels = list()
+    all_image_scores = list()
 
     for i in range(batch_size):
-        image_boxes = []
-        image_labels = []
-        image_scores = []
+        image_boxes = list()
+        image_labels = list()
+        image_scores = list()
         decoded_bboxes = cxcy_to_xy(decode_bboxes(bboxes_pred[i], default_bboxes)) 
         max_scores, best_label = cls_pred[i].max(dim=1)
         for c in range(num_classes):
