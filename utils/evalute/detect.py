@@ -57,16 +57,16 @@ def detect(bboxes_pred,
             image_labels.append(torch.LongTensor([0]).to(device))
             image_scores.append(torch.FloatTensor([0.]).to(device))
         
-        image_boxes = torch.cat(image_boxes, dim= 0)   #(n_objects, 4)
+        image_boxes = torch.cat(image_boxes, dim=0)    # (n_objects, 4)
         image_labels = torch.cat(image_labels, dim=0)  # (n_objects)
         image_scores = torch.cat(image_scores, dim=0)  # (n_objects)
         n_objects = image_scores.size(0)
         
         if n_objects > top_k:
             image_scores, sort_index = image_scores.sort(dim=0, descending=True)
-            image_scores = image_scores[:top_k]  # (top_k)
-            image_boxes = image_boxes[sort_index][:top_k]  # (top_k, 4)
-            image_labels = image_labels[sort_index][:top_k]  # (top_k)
+            image_scores = image_scores[:top_k]             # (top_k)
+            image_boxes = image_boxes[sort_index][:top_k]   # (top_k, 4)
+            image_labels = image_labels[sort_index][:top_k] # (top_k)
             
         all_images_boxes.append(image_boxes)
         all_images_labels.append(image_labels)
