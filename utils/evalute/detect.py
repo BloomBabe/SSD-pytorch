@@ -4,7 +4,13 @@ import torch.nn.functional as F
 import torchvision.ops.nms as nms
 from utils.box_utils import *
 
-def detect(bboxes_pred, cls_pred, default_bboxes, min_score, iou_threshold, top_k, device):
+def detect(bboxes_pred,
+           cls_pred,
+           default_bboxes,
+           min_score=0.6,
+           iou_threshold=0.5,
+           top_k=200,
+           device=None):
     """
     bboxes_pred: Bounding boxes predictions (batch_size, num_defaults, 4)
     cls_pred: Class prediction logits (batch_size, num_defaults, num_classes)
@@ -13,6 +19,9 @@ def detect(bboxes_pred, cls_pred, default_bboxes, min_score, iou_threshold, top_
     iou_threshold: Discards all overlapping boxes with IoU > iou_threshold
     top_k: Keep only top_k predictions
     """
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     batch_size = bboxes_pred.size(0)
     num_defaults = default_bboxes.size(0)
     num_classes = cls_pred.size(2)
