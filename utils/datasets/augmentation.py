@@ -35,12 +35,13 @@ class Distort(object):
         distortions = [TF.adjust_brightness,
                        TF.adjust_contrast,
                        TF.adjust_saturation]
-    
         random.shuffle(distortions)
         for function in distortions:
             if random.random() < 0.5:
                 adjust_factor = random.uniform(0.5, 1.5)
-                image = function(image, adjust_factor)       
+                image = function(image, adjust_factor) 
+        if type(image) != PIL.Image.Image:
+            image = TF.to_pil_image(image)      
         return image, boxes, labels
 
 class RandomFlip(object):
@@ -57,12 +58,16 @@ class RandomFlip(object):
         width = image.width
         height = image.height
         image = TF.hflip(image)
+        if type(image) != PIL.Image.Image:
+            image = TF.to_pil_image(image)
         #flip boxes 
+        new_boxes = boxes.detach().clone()
         new_boxes[:, 0] = width - boxes[:, 0]
         new_boxes[:, 2] = width - boxes[:, 2]
         new_boxes[:, 1] = height - boxes[:, 1] 
         new_boxes[:, 3] = height - boxes[:, 3] 
         new_boxes = new_boxes[:, [2, 3, 0, 1]]
+          
         return image, new_boxes, labels
 
 class Resize(object):
@@ -73,11 +78,14 @@ class Resize(object):
         width = image.width 
         height = image.height
         image = TF.resize(image, (self.size, self.size))
+        if type(image) != PIL.Image.Image:
+            image = TF.to_pil_image(image)
         old_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0)
         new_boxes = boxes / old_dims  # percent coordinates
 
         new_dims = torch.FloatTensor([self.size]*4).unsqueeze(0)
         new_boxes = new_boxes * new_dims
+            
         return image, new_boxes, labels
 
 class LightNoise(object):
@@ -95,32 +103,33 @@ class LightNoise(object):
 class Expand(object):
     def __init__(self, max_scale = 4, mean=[0.485, 0.456, 0.406]):
         self.max_scale = max_scale
+        self.mean = mean
 
     def __call__(self, image, boxes, labels=None):
         if random.random() < 0.5:
             return image, boxes, labels
+        width = image.width 
+        height = image.height
         image = TF.to_tensor(image)
-        height, width = image.size(1), image.size(2)
         scale = random.uniform(1, self.max_scale)
         new_h = int(scale*height)
         new_w = int(scale*width)
 
-        filler = torch.FloatTensor(mean) #(3)
+        filler = torch.FloatTensor(self.mean) #(3)
         new_image = torch.ones((3, new_h, new_w), dtype=torch.float) * filler.unsqueeze(1).unsqueeze(1)
 
         # Place the original image at random coordinates 
         #in this new image (origin at top-left of image)
         left = random.randint(0, new_w - width)
-        right = left + original_w
+        right = left + width
         top = random.randint(0, new_h - height)
-        bottom = top + original_h
+        bottom = top + height
 
         new_image[:, top:bottom, left:right] = image
-
+        new_image = TF.to_pil_image(new_image)
         #Adjust bounding box
         new_boxes = boxes + torch.FloatTensor([left, top, left, top]).unsqueeze(0)
-
-        image = TF.to_pil_image(image)
+            
         return new_image, new_boxes, labels
 
 class RandomCrop(object):
@@ -157,6 +166,7 @@ class RandomCrop(object):
             mode = random.choice(self.sample_options)
 
             if mode is None:
+                image = TF.to_pil_image(image)
                 return image, boxes, labels
             
             min_iou, max_iou = mode
@@ -173,8 +183,8 @@ class RandomCrop(object):
                 if h / w < 0.5 or h / w > 2:
                     continue
 
-                left = random.uniform(width - w)
-                top = random.uniform(height - h)
+                left = random.uniform(0, width - w)
+                top = random.uniform(0, height - h)
 
                 # convert to integer rect x1,y1,x2,y2
                 crop = torch.FloatTensor([int(left), int(top), int(left+w), int(top+h)])
@@ -201,7 +211,7 @@ class RandomCrop(object):
                     continue
 
                 # take only matching gt boxes
-                current_boxes = boxes[mask, :].copy()
+                current_boxes = boxes[mask, :].detach().clone()
                 # take only matching gt labels
                 current_labels = labels[mask]
 
@@ -215,7 +225,8 @@ class RandomCrop(object):
                                                   crop[2:])
                 # adjust to crop (by substracting crop's left,top)
                 current_boxes[:, 2:] -= crop[:2]
-
+                
+                new_image = TF.to_pil_image(new_image)
                 return new_image, current_boxes, current_labels
 
 class Compose(object):
@@ -228,13 +239,12 @@ class Compose(object):
         >>>     transforms.ToTensor(),
         >>> ])
     """
-
     def __init__(self, transforms):
         self.transforms = transforms
 
     def __call__(self, img, boxes=None, labels=None):
-        for t in self.transforms:
-            img, boxes, labels = t(img, boxes, labels)
+        for transform in self.transforms:
+            img, boxes, labels = transform(img, boxes, labels)
         return img, boxes, labels
         
 class SSDAugmentation(object):

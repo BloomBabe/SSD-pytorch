@@ -41,9 +41,8 @@ class COCOAnnotationTransform(object):
                 res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]
             else:
                 print("no bbox problem!")
-        print(res[:, :4])
-        print(res[:, 4])
-        return np.asarray(res[:, :4]),  np.asarray(res[:, 4]) # [xmin, ymin, xmax, ymax] [label_idx]
+        res = np.asarray(res)
+        return res # [xmin, ymin, xmax, ymax] [label_idx]
 
 
 class HHWDataset(Dataset):
@@ -78,9 +77,9 @@ class HHWDataset(Dataset):
         img = img.convert("RGB")
         height, width = img.size
         
-        boxes, labels = self.target_transform(target, width, height)
-        boxes = torch.from_numpy(boxes)
-        labels = torch.from_numpy(labels)
+        res = self.target_transform(target, width, height)
+        boxes = torch.from_numpy(res[:, :4])
+        labels = torch.from_numpy(res[:, 4])
 
         if self.transform is not None:
             target = np.array(target)

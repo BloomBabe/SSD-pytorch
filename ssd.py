@@ -89,6 +89,7 @@ class SSD(nn.Module):
         self.ssd_layers = SSDLayers(self.ssd_layers_cfg[ssd_layers_name], in_channels=512)  
         self.multi_box = SSDMultiBox(self.multibox_cfg, self.num_classes, self.device)
         self.default_bboxes = self.multi_box.default_boxes
+        
     def forward(self, x):
         sources = list()
 

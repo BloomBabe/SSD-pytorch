@@ -72,8 +72,8 @@ class SSDMultiBox(nn.Module):
     def forward(self, list_x):
         assert (len(list_x) == len(self.reg_layers)) and(len(list_x) == len(self.cls_layers))
         cls_logits = list() 
-        loc_logits = list()
-        for k, cls_layer, loc_layer in enumerate(zip(self.cls_layers, self.reg_layers)):
+        box_preds = list()
+        for k, (cls_layer, loc_layer) in enumerate(zip(self.cls_layers, self.reg_layers)):
             assert list_x[k].size(1) == self.input_channels[k]
             cls_logits.append(cls_layer(list_x[k]).permute(0, 2, 3, 1).contiguous())
             box_preds.append(loc_layer(list_x[k]).permute(0, 2, 3, 1).contiguous())

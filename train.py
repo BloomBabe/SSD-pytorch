@@ -6,7 +6,7 @@ from utils.box_utils import *
 from ssd import *
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default= "/content/", help="Dataroot directory path")
+ap.add_argument("--dataset_root", default= "/content/data/", help="Dataroot directory path")
 ap.add_argument("--cfg_root", default= "./utils/architecture_cfg.json", help= "Cfg file path")
 ap.add_argument("--batch_size", default= 8, type= int, help= "Batch size for training")
 ap.add_argument("--num_workers", default= 1, type= int, help = "Number of workers")

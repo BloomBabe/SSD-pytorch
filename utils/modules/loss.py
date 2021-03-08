@@ -44,8 +44,8 @@ class MultiBoxLoss(nn.Module):
         num_classes = cls_pred.size(2)
         default_boxes_xy = cxcy_to_xy(self.default_boxes)
         num_defaults = default_boxes_xy.size(0)
-        loc_t = torch.Tensor([batch_size, num_defaults, 4], requires_grad=False) # Tensor to be filled w/ endcoded location targets.
-        conf_t = torch.LongTensor([batch_size, num_defaults], requires_grad=False) # Tensor to be filled w/ matched indices for conf preds.
+        loc_t = torch.zeros([batch_size, num_defaults, 4], requires_grad=False) # Tensor to be filled w/ endcoded location targets.
+        conf_t = torch.zeros([batch_size, num_defaults], dtype=torch.long, requires_grad=False) # Tensor to be filled w/ matched indices for conf preds.
         
         # Match each default box with the ground truth box of the highest jaccard
         # overlap (IoU), encode the bounding boxes, then return the matched indices
@@ -69,19 +69,20 @@ class MultiBoxLoss(nn.Module):
             
             label_each_default_box = gt_labels[i][best_truth_idx]
             label_each_default_box[best_truth_overlap < self.threshold] = 0
-            
             conf_t[i] = label_each_default_box
             loc_t[i] = encode_bboxes(xy_to_cxcy(gt_boxes[i][best_truth_idx]), self.default_boxes)
         
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)
 
+        pos_default_boxes  = conf_t > 0
+        print(loc_pred.size())
+        print(loc_t.size())
+        print(pos_default_boxes.size())
         #Localization loss
         #Localization loss is computed only over positive default boxes
         smooth_L1_loss = nn.SmoothL1Loss()
-        loc_loss = smooth_L1_loss(locs_pred[pos_default_boxes], t_locs[pos_default_boxes])
-
-        pos_default_boxes  = conf_t > 0
+        loc_loss = smooth_L1_loss(loc_pred[pos_default_boxes], loc_t[pos_default_boxes])
 
         #number of positive ad hard-negative default boxes per image
         n_positive = pos_default_boxes.sum(dim= 1)
@@ -89,7 +90,7 @@ class MultiBoxLoss(nn.Module):
         
         #Find the loss for all priors
         cross_entropy_loss = nn.CrossEntropyLoss(reduce= False)
-        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), t_classes.view(-1))    #(N*8732)
+        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1))    #(N*8732)
         confidence_loss_all = confidence_loss_all.view(batch_size, n_default_boxes)    #(N, 8732)
         
         confidence_pos_loss = confidence_loss_all[pos_default_boxes]
