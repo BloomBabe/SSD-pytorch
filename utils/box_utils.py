@@ -85,7 +85,6 @@ def combine(batch):
     images = []
     boxes = []
     labels = []
-    
     for b in batch:
         images.append(b[0])
         boxes.append(b[1])

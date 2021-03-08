@@ -28,14 +28,14 @@ data_folder = args.dataset_root
 num_classes = 4
 cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
-batch_size = args.batch_size  # batch size
-iterations = args.iterations  # number of iterations to train
-workers = args.num_workers  # number of workers for loading data in the DataLoader
-print_freq = 100  # print training status every __ batches
-lr = args.lr  # learning rate
-decay_lr_at = [96500, 120000]  # decay learning rate after these many iterations
-decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
-momentum = args.momentum  # momentum
+batch_size = args.batch_size  # Batch size
+iterations = args.iterations  # Number of iterations to train
+workers = args.num_workers    # Number of workers for loading data in the DataLoader
+print_freq = 100              # Print training status every __ batches
+lr = args.lr                  # Learning rate
+decay_lr_at = [96500, 120000] # Decay learning rate after these many iterations
+decay_lr_to = 0.1             # Decay learning rate to this fraction of the existing learning rate
+momentum = args.momentum      # Momentum
 weight_decay = args.weight_decay
 grad_clip = args.grad_clip
 
@@ -71,7 +71,7 @@ def adjust_lr(optimizer, scale):
     print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
 
 if __name__ == '__main__':
-    #Init model or load checkpoint
+    # Init model or load checkpoint
     if checkpoint is None:
         start_epoch= 0
         with open(cfg_pth) as f:
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
             cls_pred, locs_pred = model(images)
             loss = criterion(locs_pred, cls_pred, boxes, labels)
-            #Backward pass
+            # Backward pass
             optimizer.zero_grad()
             loss.backward()
             

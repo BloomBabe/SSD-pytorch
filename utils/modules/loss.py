@@ -87,19 +87,19 @@ class MultiBoxLoss(nn.Module):
         
         #Find the loss for all priors
         cross_entropy_loss = nn.CrossEntropyLoss(reduce= False)
-        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1))    #(N*8732)
-        confidence_loss_all = confidence_loss_all.view(batch_size, num_defaults)    #(N, 8732)
+        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1)) # (N*8732)
+        confidence_loss_all = confidence_loss_all.view(batch_size, num_defaults) # (N, 8732)
         
         confidence_pos_loss = confidence_loss_all[pos_default_boxes]
         
         #Find which priors are hard-negative
-        confidence_neg_loss = confidence_loss_all.clone()    #(N, 8732)
+        confidence_neg_loss = confidence_loss_all.clone() # (N, 8732)
         confidence_neg_loss[pos_default_boxes] = 0.
         confidence_neg_loss, _ = confidence_neg_loss.sort(dim = 1, descending= True)
         
         hardness_ranks = torch.LongTensor(range(num_defaults)).unsqueeze(0).expand_as(confidence_neg_loss).to(self.device)  # (N, 8732)
         
-        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)  # (N, 8732)
+        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1) # (N, 8732)
         
         confidence_hard_neg_loss = confidence_neg_loss[hard_negatives]
         
