@@ -27,7 +27,7 @@ def detect(bboxes_pred,
     num_classes = cls_pred.size(2)
 
     cls_scores = F.softmax(cls_pred, dim=2)
-    assert num_defaults == bboxes_pred.size(1) == cls_pred.size(1)
+    assert num_defaults == bboxes_pred.size(1) == cls_scores.size(1)
 
     all_images_boxes = list()
     all_images_labels = list()
@@ -38,9 +38,9 @@ def detect(bboxes_pred,
         image_labels = list()
         image_scores = list()
         decoded_bboxes = cxcy_to_xy(decode_bboxes(bboxes_pred[i], default_bboxes)) 
-        max_scores, best_label = cls_pred[i].max(dim=1)
+        max_scores, best_label = cls_scores[i].max(dim=1)
         for c in range(num_classes):
-            conf_scores = cls_pred[i][:, c] 
+            conf_scores = cls_scores[i][:, c] 
             mask_min_conf = conf_scores > min_score
             conf_scores = conf_scores[mask_min_conf]
             if conf_scores.size(0) == 0:

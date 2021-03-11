@@ -5,7 +5,7 @@ from ssd.datasets.hhwd import HHWDataset
 from ssd.utils.box_utils import *
 from ssd.ssd import *
 from ssd.evalute.detect import *
-from ssd.evalute.metrics import *
+from ssd.evalute.metrics import compute_statiscs, compute_mAP
 from time import gmtime, strftime
 
 
@@ -113,36 +113,39 @@ if __name__ == '__main__':
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
         
-        # model.train()
-        # for i, (images, boxes, labels) in enumerate(train_loader):
-        #     image = images.to(device)
-        #     boxes = [bbox.to(device) for bbox in boxes]
-        #     labels = [label.to(device) for label in labels]
+        model.train()
+        for i, (images, boxes, labels) in enumerate(train_loader):
+            image = images.to(device)
+            boxes = [bbox.to(device) for bbox in boxes]
+            labels = [label.to(device) for label in labels]
 
-        #     cls_pred, locs_pred = model(images)
-        #     loss = criterion(locs_pred, cls_pred, boxes, labels)
-        #     # Backward pass
-        #     optimizer.zero_grad()
-        #     loss.backward()
+            cls_pred, locs_pred = model(images)
+            loss = criterion(locs_pred, cls_pred, boxes, labels)
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
             
-        #     if grad_clip is not None:
-        #         clip_grad(optimizer, grad_clip)
+            if grad_clip is not None:
+                clip_grad(optimizer, grad_clip)
                 
-        #     optimizer.step()
+            optimizer.step()
 
         model.eval()
         metrics_per_batch = list()
         targets = list()
         for i, (images, boxes, labels) in enumerate(val_loader):
+            for label in labels:
+                targets += label.tolist() 
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
-            targets += labels
+            
             with torch.no_grad():
                 cls_pred, locs_pred = model(images)
                 locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes)
             metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
         
-        true_positives, pred_scores, pred_labels = [np.concatenate(x, 0) for x in list(zip(*metrics_per_batch))]
-        AP, recall, precision = ap_per_class(true_positives, pred_scores, pred_labels, targets)
-        print(f"AP: {AP}\nrecall: {recall}\nprecision: {precision}")
+        true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]
+        targets = torch.LongTensor(targets).to(device)
+        AP, recall, precision = compute_mAP(true_positives, pred_scores, pred_labels, targets)
+

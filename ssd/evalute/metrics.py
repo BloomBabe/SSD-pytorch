@@ -42,17 +42,17 @@ def compute_statiscs(bboxes_pred,
                 detected_box += [max_idx]
         metrics_per_image.append([true_postives, scores_pred[sample_id], lables_pred[sample_id]])
         
-    return metrics_per_image # (batch_size, 3, N_pred)
+    return metrics_per_image 
 
 
-def compute_mAP(true_postives,
+def compute_mAP(true_positives,
                 conf_scores,
                 label_pred,
                 gt_labels,
                 device=None):
     """
     Compute the average precision 
-    true_postives: True Positives
+    true_positives: True Positives
     conf_scores: 
     label_pred:
     gt_labels:
@@ -60,7 +60,7 @@ def compute_mAP(true_postives,
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     idx = torch.argsort(conf_scores, descending=True)
-    true_postives, conf_scores, label_pred = true_postives[idx], conf_scores[idx], label_pred[idx]
+    true_positives, conf_scores, label_pred = true_positives[idx], conf_scores[idx], label_pred[idx]
 
     ap = list()
     precision = list()
