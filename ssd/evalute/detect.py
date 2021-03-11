@@ -29,9 +29,9 @@ def detect(bboxes_pred,
     cls_scores = F.softmax(cls_pred, dim=2)
     assert num_defaults == bboxes_pred.size(1) == cls_pred.size(1)
 
-    all_image_boxes = list()
-    all_image_labels = list()
-    all_image_scores = list()
+    all_images_boxes = list()
+    all_images_labels = list()
+    all_images_scores = list()
 
     for i in range(batch_size):
         image_boxes = list()
@@ -50,7 +50,7 @@ def detect(bboxes_pred,
 
             image_boxes.append(cls_bboxes[nms_ids])
             image_labels.append(torch.LongTensor(nms_ids.size(0) * [c]).to(device))
-            image_scores.append(class_scores[nms_ids])
+            image_scores.append(conf_scores[nms_ids])
 
         if len(image_boxes) == 0:
             image_boxes.append(torch.FloatTensor([[0., 0., 1., 1.]]).to(device))

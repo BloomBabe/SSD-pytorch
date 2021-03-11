@@ -8,7 +8,6 @@ def compute_statiscs(bboxes_pred,
                      scores_pred,
                      gt_bboxes, 
                      gt_labels, 
-                     num_classes, 
                      iou_threshold=0.5,
                      device=None):
     """
@@ -19,7 +18,6 @@ def compute_statiscs(bboxes_pred,
     scores_pred:
     gt_bboxes: Ground Truth bounding boxes (batch_size, N_gt, 4)
     gt_labels: Ground Truth labels (batch_size, N_gt)
-    num_classes: Number of classes
     iou_threshold:
     """
     if device is None:
@@ -45,7 +43,6 @@ def compute_statiscs(bboxes_pred,
         metrics_per_image.append([true_postives, scores_pred[sample_id], lables_pred[sample_id]])
         
     return metrics_per_image # (batch_size, 3, N_pred)
-
 
 
 def compute_mAP(true_postives,
