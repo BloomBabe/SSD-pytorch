@@ -57,6 +57,7 @@ class HHWDataset(Dataset):
         self.mode = mode
         assert self.mode in ['train', 'test']
         self.root = os.path.join(self.dataset_pth, self.mode)
+        print(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
         self.coco = COCO(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
         self.ids = list(self.coco.imgToAnns.keys())
         self.transform = transform
@@ -73,7 +74,7 @@ class HHWDataset(Dataset):
 
         path = os.path.join(self.root, self.coco.loadImgs(img_id)[0]['file_name'])
         assert os.path.exists(path), f'Image path does not exist: {path}'
-        img = Image.open(path, mode= "r")
+        img = Image.open(path, mode="r")
         img = img.convert("RGB")
         height, width = img.size
         

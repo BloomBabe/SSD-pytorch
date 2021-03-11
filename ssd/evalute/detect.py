@@ -1,7 +1,7 @@
 import torch
 import numpy as np 
 import torch.nn.functional as F
-import torchvision.ops.nms as nms
+from torchvision.ops import nms
 from ssd.utils.box_utils import *
 
 def detect(bboxes_pred,

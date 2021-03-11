@@ -86,7 +86,7 @@ class MultiBoxLoss(nn.Module):
         n_hard_negatives = self.neg_pos * n_positive
         
         #Find the loss for all priors
-        cross_entropy_loss = nn.CrossEntropyLoss(reduce= False)
+        cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
         confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1)) # (N*8732)
         confidence_loss_all = confidence_loss_all.view(batch_size, num_defaults) # (N, 8732)
         

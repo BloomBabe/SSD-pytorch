@@ -4,6 +4,8 @@ from ssd.modules.loss import MultiBoxLoss
 from ssd.datasets.hhwd import HHWDataset
 from ssd.utils.box_utils import *
 from ssd.ssd import *
+from ssd.evalute.detect import *
+from ssd.evalute.metrics import *
 from time import gmtime, strftime
 
 
@@ -25,7 +27,7 @@ global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder = args.dataset_root
-num_classes = 4
+num_classes = 5
 cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
 batch_size = args.batch_size  # Batch size
@@ -92,10 +94,16 @@ if __name__ == '__main__':
                                 weight_decay = weight_decay)
     model = model.to(device)
     criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
+
     train_dataset = HHWDataset(data_folder, mode = "train")
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
-                                                shuffle=True, collate_fn=combine,
-                                                num_workers=workers, pin_memory=True)
+                                               shuffle=True, collate_fn=combine,
+                                               num_workers=workers, pin_memory=True)
+
+    val_dataset = HHWDataset(data_folder, mode = "test")
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, 
+                                             shuffle=True, collate_fn=combine,
+                                             num_workers=workers, pin_memory=True)
 
     epochs = iterations // (len(train_dataset) // batch_size)
     decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
@@ -105,23 +113,36 @@ if __name__ == '__main__':
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
         
-        model.train()
-        for i, (images, boxes, labels) in enumerate(train_loader):
+        # model.train()
+        # for i, (images, boxes, labels) in enumerate(train_loader):
+        #     image = images.to(device)
+        #     boxes = [bbox.to(device) for bbox in boxes]
+        #     labels = [label.to(device) for label in labels]
+
+        #     cls_pred, locs_pred = model(images)
+        #     loss = criterion(locs_pred, cls_pred, boxes, labels)
+        #     # Backward pass
+        #     optimizer.zero_grad()
+        #     loss.backward()
+            
+        #     if grad_clip is not None:
+        #         clip_grad(optimizer, grad_clip)
+                
+        #     optimizer.step()
+
+        model.eval()
+        metrics_per_batch = list()
+        targets = list()
+        for i, (images, boxes, labels) in enumerate(val_loader):
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
-
-            cls_pred, locs_pred = model(images)
-            loss = criterion(locs_pred, cls_pred, boxes, labels)
-            # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            
-            if grad_clip is not None:
-                clip_grad(optimizer, grad_clip)
-                
-            optimizer.step()
-            
-            # if i % print_freq == 0:
-            #     print('Epoch: [{0}][{1}/{2}]\t' 'Loss {loss.val:.4f} ( Average Loss per epoch: {loss.avg:.4f})\t'.format(epoch, i, len(train_loader), loss=losses))
-
+            targets += labels
+            with torch.no_grad():
+                cls_pred, locs_pred = model(images)
+                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes)
+            metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
+        
+        true_positives, pred_scores, pred_labels = [np.concatenate(x, 0) for x in list(zip(*metrics_per_batch))]
+        AP, recall, precision = ap_per_class(true_positives, pred_scores, pred_labels, targets)
+        print(f"AP: {AP}\nrecall: {recall}\nprecision: {precision}")
