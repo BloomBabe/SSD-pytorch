@@ -1,4 +1,5 @@
 import argparse
+from tqdm import tqdm
 import torch.optim as optim
 from ssd.modules.loss import MultiBoxLoss
 from ssd.datasets.hhwd import HHWDataset
@@ -72,6 +73,7 @@ def adjust_lr(optimizer, scale):
         param_group['lr'] = param_group['lr'] * scale
     print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
 
+
 if __name__ == '__main__':
     # Init model or load checkpoint
     if checkpoint is None:
@@ -107,20 +109,23 @@ if __name__ == '__main__':
 
     epochs = iterations // (len(train_dataset) // batch_size)
     decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
-        
+    
     for epoch in range(start_epoch, epochs):
+        print(f'Epoch: {epoch}/{epochs}')
+        mean_loss = 0.
         if epoch in decay_lr_at:
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
         
         model.train()
-        for i, (images, boxes, labels) in enumerate(train_loader):
+        for i, (images, boxes, labels) in tqdm(enumerate(train_loader)):
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
 
             cls_pred, locs_pred = model(images)
             loss = criterion(locs_pred, cls_pred, boxes, labels)
+            mean_loss += loss.item()
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
@@ -130,10 +135,13 @@ if __name__ == '__main__':
                 
             optimizer.step()
 
+        print(mean_loss)
         model.eval()
         metrics_per_batch = list()
         targets = list()
         for i, (images, boxes, labels) in enumerate(val_loader):
+            if i==1:
+                break
             for label in labels:
                 targets += label.tolist() 
             image = images.to(device)
@@ -147,5 +155,5 @@ if __name__ == '__main__':
         
         true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]
         targets = torch.LongTensor(targets).to(device)
-        AP, recall, precision = compute_mAP(true_positives, pred_scores, pred_labels, targets)
-
+        metric_dict = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
+        print(metric_dict)

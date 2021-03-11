@@ -49,6 +49,7 @@ def compute_mAP(true_positives,
                 conf_scores,
                 label_pred,
                 gt_labels,
+                cat_dict,
                 device=None):
     """
     Compute the average precision 
@@ -59,47 +60,46 @@ def compute_mAP(true_positives,
     """
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    metric_dict = dict()
+    for cat in cat_dict.keys():
+            name = cat_dict[cat]
+            metric_dict[name] = {'AP50': 0.,
+                                 'precision': 0.,
+                                 'recall': 0.}
+
     idx = torch.argsort(conf_scores, descending=True)
     true_positives, conf_scores, label_pred = true_positives[idx], conf_scores[idx], label_pred[idx]
-
-    ap = list()
-    precision = list()
-    recall = list()
-
+    
     classes = torch.unique(gt_labels)
     for cls in classes:
         idx = label_pred==cls
         num_gt = (gt_labels == cls).sum().item()
         num_pred = idx.sum()
-        if num_pred == 0 and num_gt == 0:
-            continue
-        elif num_pred == 0 or num_gt == 0:
-            ap.append(0)
-            precision.append(0)
-            recall.append(0)
-        else:
-            cumul_true_positives = torch.cumsum(true_positives[idx], dim=0)  
-            cumul_false_positives = torch.cumsum(1-true_positives[idx], dim=0)  
+        
+        cumul_true_positives = torch.cumsum(true_positives[idx], dim=0)  
+        cumul_false_positives = torch.cumsum(1-true_positives[idx], dim=0)  
 
-            cumul_precision = cumul_true_positives / (
-                    cumul_true_positives + cumul_false_positives + 1e-10) 
-            precision.append(cumul_precision)
+        cumul_precision = cumul_true_positives / (
+                cumul_true_positives + cumul_false_positives + 1e-10) 
 
-            cumul_recall = cumul_true_positives / (num_gt + 1e-10)
-            recall.append(cumul_recall)
+        cumul_recall = cumul_true_positives / (num_gt + 1e-10)
 
-            recall_thresholds = torch.arange(start=0, end=1.1, step=.1).tolist()
-            precisions = torch.zeros((len(recall_thresholds)), dtype=torch.float).to(device)
-            for i, t in enumerate(recall_thresholds):
-                recalls_above_t = cumul_recall >= t
-                if recalls_above_t.any():
-                    precisions[i] = cumul_precision[recalls_above_t].max()
-                else:
-                    precisions[i] = 0.
-            ap.append(precisions.mean()) 
-    
-    return ap, recall, precision
+        recall_thresholds = torch.arange(start=0, end=1.1, step=.1).tolist()
+        precisions = torch.zeros((len(recall_thresholds)), dtype=torch.float).to(device)
+        for i, t in enumerate(recall_thresholds):
+            recalls_above_t = cumul_recall >= t
+            if recalls_above_t.any():
+                precisions[i] = cumul_precision[recalls_above_t].max()
+            else:
+                precisions[i] = 0.
+
+        metric_dict[cat_dict[str(cls.item())]]["AP50"] = precisions.mean().item()
+        metric_dict[cat_dict[str(cls.item())]]["recall"] = cumul_recall.mean().item()
+        metric_dict[cat_dict[str(cls.item())]]["precision"] = cumul_precision.mean().item()
+
+    return metric_dict 
 
 
-    
+            
     

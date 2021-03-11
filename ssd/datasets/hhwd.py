@@ -44,6 +44,20 @@ class COCOAnnotationTransform(object):
         res = np.asarray(res)
         return res # [xmin, ymin, xmax, ymax] [label_idx]
 
+def label_map(annotation_file):
+    """
+    Return categories dict:
+    {"0": "Background",
+     "1": "Workers",
+     "2": "head"
+     ...}
+    """
+    ann = json.load(open(annotation_file, 'r'))
+    cat_dict = dict()
+    cat_dict["0"] = "Background"
+    for cat in ann["categories"]:
+        cat_dict[str(cat["id"]+1)] = cat["name"]
+    return cat_dict
 
 class HHWDataset(Dataset):
 
@@ -62,7 +76,8 @@ class HHWDataset(Dataset):
         self.ids = list(self.coco.imgToAnns.keys())
         self.transform = transform
         self.target_transform = target_transform
-
+        
+        self.cat_dict = label_map(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
     def __len__(self):
         return len(self.ids)
     
