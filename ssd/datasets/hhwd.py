@@ -10,7 +10,7 @@ import os
 import numpy as np 
 from PIL import Image
 from pycocotools.coco import COCO
-from utils.datasets.augmentation import SSDAugmentation
+from ssd.datasets.augmentation import SSDAugmentation
 
 class COCOAnnotationTransform(object):
     """Transforms a COCO annotation into a Tensor of bbox coords and label index

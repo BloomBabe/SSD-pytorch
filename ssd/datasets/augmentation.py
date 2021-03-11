@@ -5,7 +5,7 @@ import types
 import random
 import torchvision.transforms.functional as TF
 import PIL
-from utils.box_utils import compute_iou
+from ssd.utils.box_utils import compute_iou
 
 random.seed(42)
 

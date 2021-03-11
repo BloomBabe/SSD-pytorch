@@ -1,6 +1,6 @@
 import torch.nn as nn 
 import torch.nn.functional as F
-from utils.box_utils import *
+from ssd.utils.box_utils import *
 
 
 class MultiBoxLoss(nn.Module):

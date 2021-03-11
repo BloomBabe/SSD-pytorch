@@ -1,15 +1,15 @@
 import argparse
 import torch.optim as optim
-from utils.modules.loss import MultiBoxLoss
-from utils.datasets.hhwd import HHWDataset
-from utils.box_utils import *
-from ssd import *
+from ssd.modules.loss import MultiBoxLoss
+from ssd.datasets.hhwd import HHWDataset
+from ssd.utils.box_utils import *
+from ssd.ssd import *
 from time import gmtime, strftime
 
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--dataset_root", default= "/content/data/", help="Dataroot directory path")
-ap.add_argument("--cfg_root", default= "./utils/architecture_cfg.json", help= "Cfg file path")
+ap.add_argument("--cfg_root", default= "./ssd/configs/architecture_cfg.json", help= "Cfg file path")
 ap.add_argument("--batch_size", default= 8, type= int, help= "Batch size for training")
 ap.add_argument("--num_workers", default= 1, type= int, help = "Number of workers")
 ap.add_argument("--lr", "--learning-rate", default= 1e-3, type= float, help= "Learning rate")

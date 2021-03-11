@@ -1,9 +1,9 @@
 import torch
 import numpy as np 
 import torch.nn as nn
-from utils.modules.backbone import vgg_backbone
-from utils.modules.l2norm import L2Norm
-from utils.modules.box_head import SSDMultiBox
+from ssd.modules.backbone import vgg_backbone
+from ssd.modules.l2norm import L2Norm
+from ssd.modules.box_head import SSDMultiBox
 import json
 import os
 
@@ -77,9 +77,7 @@ class SSD(nn.Module):
         assert self.backbone_name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 
                                       'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn']
         assert self.ssd_layers_name in ['ssd_300']
-
-        self.file_pth = os.path.join(BASE_DIR,'utils/architecture_cfg.json')
-        
+                
         self.backbone_cfg = cfgs['backbone']
         self.ssd_layers_cfg = cfgs['ssd_layers']
         self.multibox_cfg = cfgs['multi_box']
