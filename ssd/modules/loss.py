@@ -1,7 +1,7 @@
 import torch.nn as nn 
 import torch.nn.functional as F
 from ssd.utils.box_utils import *
-
+import sys
 
 class MultiBoxLoss(nn.Module):
     """
@@ -71,8 +71,11 @@ class MultiBoxLoss(nn.Module):
             label_each_default_box[best_truth_overlap < self.threshold] = 0
             conf_t[i] = label_each_default_box
             loc_t[i] = encode_bboxes(xy_to_cxcy(gt_boxes[i][best_truth_idx]), self.default_boxes)
+            print('\n', gt_boxes[i][best_truth_idx])
             print(xy_to_cxcy(gt_boxes[i][best_truth_idx]))
+            print(self.default_boxes)
             print(loc_t[i])
+            sys.exit()
         
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)

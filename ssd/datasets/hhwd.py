@@ -29,20 +29,21 @@ class COCOAnnotationTransform(object):
             a list containing lists of bounding boxes  [bbox coords, class idx]
         """
         scale = np.array([width, height, width, height])
-        res = []
+        labels = []
+        bboxes = []
         for obj in target:
             if 'bbox' in obj:
                 bbox = obj['bbox']
                 bbox[2] += bbox[0]
                 bbox[3] += bbox[1]
                 label_idx = obj['category_id']+1
-                final_box = list(np.array(bbox)/scale)
-                final_box.append(label_idx)
-                res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]
+                bboxes += [bbox]      # [xmin, ymin, xmax, ymax]
+                labels += [label_idx] # [label_idx]
             else:
                 print("no bbox problem!")
-        res = np.asarray(res)
-        return res # [xmin, ymin, xmax, ymax] [label_idx]
+        bboxes = torch.FloatTensor(bboxes)
+        labels = torch.LongTensor(labels)
+        return bboxes, labels # [xmin, ymin, xmax, ymax] [label_idx]
 
 def label_map(annotation_file):
     """
@@ -93,9 +94,7 @@ class HHWDataset(Dataset):
         img = img.convert("RGB")
         height, width = img.size
         
-        res = self.target_transform(target, width, height)
-        boxes = torch.from_numpy(res[:, :4])
-        labels = torch.from_numpy(res[:, 4])
+        boxes, labels = self.target_transform(target, width, height)
 
         if self.transform is not None:
             target = np.array(target)

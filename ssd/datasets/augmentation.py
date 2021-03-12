@@ -144,9 +144,9 @@ class RandomCrop(object):
         mode (float tuple): the min and max jaccard overlaps
     Return:
         (img, boxes, classes)
-            img (Image): the cropped image
-            boxes (Tensor): the adjusted bounding boxes in pt form
-            labels (Tensor): the class labels for each bbox
+        img (Image): the cropped image
+        boxes (Tensor): the adjusted bounding boxes in pt form
+        labels (Tensor): the class labels for each bbox
     """
     def __init__(self):
         self.sample_options = (
