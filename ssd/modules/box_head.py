@@ -53,7 +53,6 @@ class SSDMultiBox(nn.Module):
                 for j in range(self.fmap_wh[k]):
                     cx = (j + 0.5) / self.fmap_wh[k]
                     cy = (i + 0.5) / self.fmap_wh[k]
-
                     for ratio in self.aspect_ratios[k]:
                         #(cx, cy, w, h)
                         default_boxes.append([cx, cy, self.scales[k]* math.sqrt(k), 

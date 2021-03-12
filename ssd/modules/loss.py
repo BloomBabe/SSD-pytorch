@@ -71,11 +71,11 @@ class MultiBoxLoss(nn.Module):
             label_each_default_box[best_truth_overlap < self.threshold] = 0
             conf_t[i] = label_each_default_box
             loc_t[i] = encode_bboxes(xy_to_cxcy(gt_boxes[i][best_truth_idx]), self.default_boxes)
-            print('\n', gt_boxes[i][best_truth_idx])
-            print(xy_to_cxcy(gt_boxes[i][best_truth_idx]))
-            print(self.default_boxes)
-            print(loc_t[i])
-            sys.exit()
+            # print('\n', gt_boxes[i][best_truth_idx])
+            # print(xy_to_cxcy(gt_boxes[i][best_truth_idx]))
+            # print(self.default_boxes)
+            # print(loc_t[i])
+            # sys.exit()
         
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)
@@ -83,8 +83,9 @@ class MultiBoxLoss(nn.Module):
         pos_default_boxes  = conf_t > 0
         #Localization loss
         #Localization loss is computed only over positive default boxes
-        print(loc_pred[pos_default_boxes])
-        print(loc_t[pos_default_boxes])
+        # print(loc_pred[pos_default_boxes])
+        # print(loc_t[pos_default_boxes])
+        # sys.exit()
         smooth_L1_loss = nn.SmoothL1Loss()
         loc_loss = smooth_L1_loss(loc_pred[pos_default_boxes], loc_t[pos_default_boxes])
 

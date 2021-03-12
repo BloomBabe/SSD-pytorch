@@ -9,6 +9,16 @@ from ssd.utils.box_utils import compute_iou
 
 random.seed(42)
 
+class NormalizeBox(object):
+    def __call__(self, image, boxes, labels=None):
+        width = image.width 
+        height = image.height 
+        boxes[:, 0] = boxes[:, 0]/width
+        boxes[:, 1] = boxes[:, 1]/height
+        boxes[:, 2] = boxes[:, 2]/width
+        boxes[:, 3] = boxes[:, 3]/height
+        return image, boxes, labels
+
 class ToTensor(object):
     def __call__(self, image, boxes=None, labels=None):
         return TF.to_tensor(image), boxes, labels
@@ -259,6 +269,7 @@ class SSDAugmentation(object):
             RandomCrop(),
             RandomFlip(),
             Resize(size=size),
+            NormalizeBox(),
             ToTensor(),
             Normalize(mean=mean, std=std)
         ])
