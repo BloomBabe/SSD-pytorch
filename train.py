@@ -1,7 +1,8 @@
 import argparse
 import os
-from tqdm import tqdm
+
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 from ssd.modules.loss import MultiBoxLoss
 from ssd.datasets.augmentation import SSDDetectAug
 from ssd.datasets.hhwd import HHWDataset
@@ -47,12 +48,13 @@ weight_decay = args.weight_decay
 grad_clip = args.grad_clip
 
 def create_exp_dir(path=expdir_root):
-    checkpoint_pth = os.path.join(path, 'checkpoints')
-    if not os.path.exists(checkpoint_pth):
-        os.makedirs(checkpoint_pth)
+    checkpoint_dir = os.path.join(path, 'checkpoints')
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
     tensorboard_dir = os.path.join(path, 'tensorboard')
     if not os.path.exists(tensorboard_dir):
         os.mkdir(tensorboard_dir)
+    return checkpoint_dir, tensorboard_dir
 
 def clip_grad(optimizer, grad_clip):
     for group in optimizer.param_groups:
@@ -79,6 +81,30 @@ def adjust_lr(optimizer, scale):
         param_group['lr'] = param_group['lr'] * scale
     print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
 
+class Metrics(object):
+    def __init__(self):
+        super(Metrics, self).__init__()
+        self.mean_loss = 0.
+        self.mean_conf_loss = 0.
+        self.mean_loc_loss = 0.
+        self.metrics_per_batch = list()
+        self.targets = list()
+    
+    def update(self, loss, loc_loss, conf_loss, metrics):
+        self.mean_loss += loss
+        self.mean_conf_loss += conf_loss
+        self.mean_loc_loss += loc_loss
+        self.metrics_per_batch += metrics
+    
+    def mean_metrics(self, length):
+        true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*self.metrics_per_batch))]
+        self.targets = torch.LongTensor(self.targets).to(device)
+        return (self.mean_loss/lenght, 
+                self.mean_conf_loss/lenght, 
+                self.mean_loc_loss/lenght, 
+                true_positives, 
+                pred_scores, 
+                pred_labels)
 
 if __name__ == '__main__':
     # Init model or load checkpoint
@@ -116,45 +142,66 @@ if __name__ == '__main__':
     epochs = iterations // (len(train_dataset) // batch_size)
     decay_lr_at = [it // (len(train_dataset) // batch_size) for it in decay_lr_at]
     
+    ckpts_dir, log_dir = create_exp_dir()
+    writer = SummaryWriter(log_dir=log_dir, max_queue=20)
+
     for epoch in range(start_epoch, epochs):
-        print(f'Epoch: {epoch}/{epochs}')
-        mean_loss = 0.
+        arrow = int(epoch//(epochs/50))
+        print(f'Epoch: {epoch}/{epochs} [{"".join(["=" for i in range(arrow)])}>{"".join(["-" for i in range(50-arrow)])}]')
         if epoch in decay_lr_at:
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
-        # Training
+        # =================Training=================
+        metrics = Metrics()
         model.train()
         for i, (images, boxes, labels) in enumerate(train_loader):
+            for label in labels:
+                metrics.targets += label.tolist() 
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
-
+            # Loss
             cls_pred, locs_pred = model(images)
             loss, loc_loss, conf_loss = criterion(locs_pred, cls_pred, boxes, labels)
-            mean_loss += loss.item()
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
             if grad_clip is not None:
                 clip_grad(optimizer, grad_clip)
             optimizer.step()
-        # Validation
-        model.eval()
-        metrics_per_batch = list()
-        targets = list()
-        for i, (images, boxes, labels) in enumerate(val_loader):
-            for label in labels:
-                targets += label.tolist() 
-            image = images.to(device)
-            boxes = [bbox.to(device) for bbox in boxes]
-            labels = [label.to(device) for label in labels]
-            
+            # Accuracy
             with torch.no_grad():
                 cls_pred, locs_pred = model(images)
                 locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
-            metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
+            stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
+            metrics.update(loss, loc_loss, conf_loss, stats)
+
+        mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = metrics.mean_metrics(len(train_loader))
+        metric_dict, mAP = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
+
+        writer.add_scalars("Loss/train_loss", mean_loss, epoch)
+        writer.add_scalars("Loss/train_conf_loss", mean_conf_loss, epoch)
+        writer.add_scalars("Loss/train_loc_loss", mean_loc_loss, epoch)
+        writer.add_scalars("Accuracy/train_per_class", metric_dict, epoch)
+        writer.add_scalars("Accuracy/train_mAP50", mAP, epoch)
+        print("Loss train_loss: ", mean_loss," Loss train_conf_loss: ", mean_conf_loss, " Loss train_loc_loss: ", mean_loc_loss, " Accuracy train_mAP50: ", mAP)
+        # =================Validation=================
+        # model.eval()
+        # metrics_per_batch = list()
+        # targets = list()
+        # for i, (images, boxes, labels) in enumerate(val_loader):
+        #     for label in labels:
+        #         targets += label.tolist() 
+        #     image = images.to(device)
+        #     boxes = [bbox.to(device) for bbox in boxes]
+        #     labels = [label.to(device) for label in labels]
+            
+        #     with torch.no_grad():
+        #         cls_pred, locs_pred = model(images)
+        #         locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
+        #     metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
         
-        true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]
-        targets = torch.LongTensor(targets).to(device)
-        metric_dict = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
-        print(metric_dict)
+        # true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]
+        # targets = torch.LongTensor(targets).to(device)
+        # metric_dict = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
+        # print(metric_dict)

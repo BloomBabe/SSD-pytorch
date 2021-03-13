@@ -62,6 +62,7 @@ def compute_mAP(true_positives,
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     metric_dict = dict()
+    mean_AP = 0.
     for cat in cat_dict.keys():
             name = cat_dict[cat]
             metric_dict[name] = {'AP50': 0.,
@@ -93,12 +94,12 @@ def compute_mAP(true_positives,
                 precisions[i] = cumul_precision[recalls_above_t].max()
             else:
                 precisions[i] = 0.
-
+        mean_AP += precisions.mean().item()
         metric_dict[cat_dict[str(cls.item())]]["AP50"] = precisions.mean().item()
         metric_dict[cat_dict[str(cls.item())]]["recall"] = cumul_recall.mean().item()
         metric_dict[cat_dict[str(cls.item())]]["precision"] = cumul_precision.mean().item()
 
-    return metric_dict 
+    return metric_dict, mean_AP/len(classes)
 
 
             
