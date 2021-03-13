@@ -61,13 +61,11 @@ def compute_mAP(true_positives,
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    metric_dict = dict()
+    ap_per_class = dict()
     mean_AP = 0.
     for cat in cat_dict.keys():
-            name = cat_dict[cat]
-            metric_dict[name] = {'AP50': 0.,
-                                 'precision': 0.,
-                                 'recall': 0.}
+        name = cat_dict[cat]
+        ap_per_class[name] = 0.
 
     idx = torch.argsort(conf_scores, descending=True)
     true_positives, conf_scores, label_pred = true_positives[idx], conf_scores[idx], label_pred[idx]
@@ -95,11 +93,9 @@ def compute_mAP(true_positives,
             else:
                 precisions[i] = 0.
         mean_AP += precisions.mean().item()
-        metric_dict[cat_dict[str(cls.item())]]["AP50"] = precisions.mean().item()
-        metric_dict[cat_dict[str(cls.item())]]["recall"] = cumul_recall.mean().item()
-        metric_dict[cat_dict[str(cls.item())]]["precision"] = cumul_precision.mean().item()
+        ap_per_class[cat_dict[str(cls.item())]] = precisions.mean()
 
-    return metric_dict, mean_AP/len(classes)
+    return ap_per_class, mean_AP/len(classes)
 
 
             

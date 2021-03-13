@@ -2,6 +2,7 @@ import argparse
 import os
 import time
 import datetime
+import sys 
 
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -33,21 +34,21 @@ args = ap.parse_args()
 global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-data_folder = args.dataset_root
-expdir_root = args.expdir_root
-num_classes = 5
-cfg_pth = args.cfg_root
-checkpoint = args.checkpoint
-batch_size = args.batch_size  # Batch size
-iterations = args.iterations  # Number of iterations to train
-workers = args.num_workers    # Number of workers for loading data in the DataLoader
-print_freq = 100              # Print training status every __ batches
-lr = args.lr                  # Learning rate
-decay_lr_at = [96500, 120000] # Decay learning rate after these many iterations
-decay_lr_to = 0.1             # Decay learning rate to this fraction of the existing learning rate
-momentum = args.momentum      # Momentum
+data_folder  = args.dataset_root
+expdir_root  = args.expdir_root
+num_classes  = 5
+cfg_pth      = args.cfg_root
+checkpoint   = args.checkpoint
+batch_size   = args.batch_size  # Batch size
+iterations   = args.iterations  # Number of iterations to train
+workers      = args.num_workers # Number of workers for loading data in the DataLoader
+print_freq   = 100              # Print training status every __ batches
+lr           = args.lr          # Learning rate
+decay_lr_at  = [96500, 120000]  # Decay learning rate after these many iterations
+decay_lr_to  = 0.1              # Decay learning rate to this fraction of the existing learning rate
+momentum     = args.momentum    # Momentum
 weight_decay = args.weight_decay
-grad_clip = args.grad_clip
+grad_clip    = args.grad_clip
 
 def create_exp_dir(path=expdir_root):
     checkpoint_dir = os.path.join(path, 'checkpoints')
@@ -64,7 +65,7 @@ def clip_grad(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
-def save_checkpoint(epoch, model, optimizer, path = './experiments/checkpoints/'):
+def save_checkpoint(epoch, model, optimizer, path=os.path.join(expdir_root, 'checkpoints')):
     """
         Save model checkpoint
     """
@@ -161,7 +162,6 @@ if __name__ == '__main__':
         metrics = Metrics()
         model.train()
         for i, (images, boxes, labels) in enumerate(train_loader):
-            print(f"  [{i}/{len(train_loader)}]")
             for label in labels:
                 metrics.targets += label.tolist() 
             image = images.to(device)
@@ -181,22 +181,24 @@ if __name__ == '__main__':
                 locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
                 stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
                 metrics.update(loss, loc_loss, conf_loss, stats)
-            print ("\033[A                             \033[A")
+  
         train_time = time.time()-start_time 
         print("Time: ", datetime.timedelta(seconds=train_time))
 
         mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = metrics.mean_metrics(len(train_loader))
-        metric_dict, mAP = compute_mAP(true_positives, pred_scores, pred_labels, metrics.targets, val_dataset.cat_dict)
+        ap_per_class, mAP = compute_mAP(true_positives, pred_scores, pred_labels, metrics.targets, val_dataset.cat_dict)
         metrics.reset()
 
-        writer.add_scalars("Loss/train_loss", mean_loss, epoch)
-        writer.add_scalars("Loss/train_conf_loss", mean_conf_loss, epoch)
-        writer.add_scalars("Loss/train_loc_loss", mean_loc_loss, epoch)
-        writer.add_scalars("Accuracy/train_per_class", metric_dict, epoch)
-        writer.add_scalars("Accuracy/train_mAP50", mAP, epoch)
+        writer.add_scalar("Loss/train_loss", mean_loss, epoch)
+        writer.add_scalar("Loss/train_conf_loss", mean_conf_loss, epoch)
+        writer.add_scalar("Loss/train_loc_loss", mean_loc_loss, epoch)
+        writer.add_scalars("Accuracy/train_per_class", ap_per_class, epoch)
+        writer.add_scalar("Accuracy/train_mAP50", mAP, epoch)
 
-        print("Loss train_loss: ", mean_loss," Loss train_conf_loss: ", mean_conf_loss, " Loss train_loc_loss: ", mean_loc_loss, " Accuracy train_mAP50: ", mAP)
-        save_checkpoint()
+        print("Loss train_loss: ", mean_loss.item()," Loss train_conf_loss: ", \
+              mean_conf_loss.item(), " Loss train_loc_loss: ", mean_loc_loss.item(), \
+              " Accuracy train_mAP50: ", mAP.item())
+        save_checkpoint(epoch, model, optimizer)
         # =================Validation=================
         # model.eval()
         # metrics_per_batch = list()
