@@ -91,7 +91,7 @@ class SSD(nn.Module):
     def forward(self, x):
         sources = list()
 
-        conv4, out = self.backbone(x)
+        conv4, out = self.backbone(x.to(self.device))
         conv4 = self.l2norm(conv4)
         sources.append(conv4)
         outs = self.ssd_layers(out)
