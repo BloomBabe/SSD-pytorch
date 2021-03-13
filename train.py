@@ -140,8 +140,6 @@ if __name__ == '__main__':
         metrics_per_batch = list()
         targets = list()
         for i, (images, boxes, labels) in enumerate(val_loader):
-            if i==1:
-                break
             for label in labels:
                 targets += label.tolist() 
             image = images.to(device)
