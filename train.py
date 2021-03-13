@@ -1,5 +1,7 @@
 import argparse
 import os
+import time
+import datetime
 
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
@@ -62,7 +64,7 @@ def clip_grad(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
-def save_checkpoint(epoch, model, optimizer, path = './checkpoints/'):
+def save_checkpoint(epoch, model, optimizer, path = './experiments/checkpoints/'):
     """
         Save model checkpoint
     """
@@ -84,12 +86,15 @@ def adjust_lr(optimizer, scale):
 class Metrics(object):
     def __init__(self):
         super(Metrics, self).__init__()
+        self.reset()
+    
+    def reset(self):
         self.mean_loss = 0.
         self.mean_conf_loss = 0.
         self.mean_loc_loss = 0.
         self.metrics_per_batch = list()
         self.targets = list()
-    
+
     def update(self, loss, loc_loss, conf_loss, metrics):
         self.mean_loss += loss
         self.mean_conf_loss += conf_loss
@@ -99,9 +104,9 @@ class Metrics(object):
     def mean_metrics(self, length):
         true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*self.metrics_per_batch))]
         self.targets = torch.LongTensor(self.targets).to(device)
-        return (self.mean_loss/lenght, 
-                self.mean_conf_loss/lenght, 
-                self.mean_loc_loss/lenght, 
+        return (self.mean_loss/length, 
+                self.mean_conf_loss/length, 
+                self.mean_loc_loss/length, 
                 true_positives, 
                 pred_scores, 
                 pred_labels)
@@ -152,9 +157,11 @@ if __name__ == '__main__':
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
         # =================Training=================
+        start_time = time.time()
         metrics = Metrics()
         model.train()
         for i, (images, boxes, labels) in enumerate(train_loader):
+            print(f"  [{i}/{len(train_loader)}]")
             for label in labels:
                 metrics.targets += label.tolist() 
             image = images.to(device)
@@ -171,20 +178,25 @@ if __name__ == '__main__':
             optimizer.step()
             # Accuracy
             with torch.no_grad():
-                cls_pred, locs_pred = model(images)
                 locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
-            stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
-            metrics.update(loss, loc_loss, conf_loss, stats)
+                stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
+                metrics.update(loss, loc_loss, conf_loss, stats)
+            print ("\033[A                             \033[A")
+        train_time = time.time()-start_time 
+        print("Time: ", datetime.timedelta(seconds=train_time))
 
         mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = metrics.mean_metrics(len(train_loader))
-        metric_dict, mAP = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
+        metric_dict, mAP = compute_mAP(true_positives, pred_scores, pred_labels, metrics.targets, val_dataset.cat_dict)
+        metrics.reset()
 
         writer.add_scalars("Loss/train_loss", mean_loss, epoch)
         writer.add_scalars("Loss/train_conf_loss", mean_conf_loss, epoch)
         writer.add_scalars("Loss/train_loc_loss", mean_loc_loss, epoch)
         writer.add_scalars("Accuracy/train_per_class", metric_dict, epoch)
         writer.add_scalars("Accuracy/train_mAP50", mAP, epoch)
+
         print("Loss train_loss: ", mean_loss," Loss train_conf_loss: ", mean_conf_loss, " Loss train_loc_loss: ", mean_loc_loss, " Accuracy train_mAP50: ", mAP)
+        save_checkpoint()
         # =================Validation=================
         # model.eval()
         # metrics_per_batch = list()
