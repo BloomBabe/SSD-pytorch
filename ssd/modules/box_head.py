@@ -2,6 +2,8 @@ import torch
 import math
 import numpy as np 
 import torch.nn as nn
+from itertools import product as product
+
 
 class SSDMultiBox(nn.Module):
     """ Classifier and box regressor heads"""
@@ -49,21 +51,20 @@ class SSDMultiBox(nn.Module):
         assert len(self.aspect_ratios)==len(self.scales)
         default_boxes = []
         for k in range(len(self.fmap_wh)):
-            for i in range(self.fmap_wh[k]):
-                for j in range(self.fmap_wh[k]):
-                    cx = (j + 0.5) / self.fmap_wh[k]
-                    cy = (i + 0.5) / self.fmap_wh[k]
-                    for ratio in self.aspect_ratios[k]:
-                        #(cx, cy, w, h)
-                        default_boxes.append([cx, cy, self.scales[k]* math.sqrt(k), 
-                                              self.scales[k]/math.sqrt(ratio)]) 
-                        if ratio == 1:
-                            try:
-                                add_scale = math.sqrt(self.scales[k]*self.scales[k+1])
-                            except IndexError:
-                                #for the last feature map
-                                add_scale = 1.
-                            default_boxes.append([cx, cy, add_scale, add_scale])
+            for i, j in product(range(self.fmap_wh[k]), repeat=2):
+                cx = (j + 0.5) / self.fmap_wh[k]
+                cy = (i + 0.5) / self.fmap_wh[k]
+                for ratio in self.aspect_ratios[k]:
+                    #(cx, cy, w, h)
+                    default_boxes.append([cx, cy, self.scales[k]*math.sqrt(ratio), 
+                                          self.scales[k]/math.sqrt(ratio)]) 
+                    if ratio == 1:
+                        try:
+                            add_scale = math.sqrt(self.scales[k]*self.scales[k+1])
+                        except IndexError:
+                            #for the last feature map
+                            add_scale = 1.
+                        default_boxes.append([cx, cy, add_scale, add_scale])
         default_boxes = torch.FloatTensor(default_boxes).to(self.device)
         default_boxes.clamp_(0, 1)
         return default_boxes

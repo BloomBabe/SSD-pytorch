@@ -67,11 +67,8 @@ def encode_bboxes(bboxes,  default_boxes, variances=[0.1, 0.2]):
         Encode bboxes correspoding default boxes (center form)
         Out: Encodeed bboxes to 4 offset, a tensor of dimensions (n_defaultboxes, 4)
     """
-    g_cxcy = (bboxes[:, :2] + bboxes[:, 2:])/2 - default_boxes[:, :2]
-    g_cxcy /= (variances[0] * default_boxes[:, 2:])
-    g_wh = (bboxes[:, 2:] - bboxes[:, :2]) / default_boxes[:, 2:]
-    g_wh = torch.log(g_wh) / variances[1]
-    return torch.cat([g_cxcy, g_wh], 1)  # (num_defaults, 4)
+    return torch.cat([(bboxes[:, :2] - default_boxes[:, :2]) / (default_boxes[:, 2:]*variances[0]),
+                      torch.log(bboxes[:, 2:] / default_boxes[:, 2:])/variances[1]], 1)
 
 
 def decode_bboxes(offsets, default_boxes):
