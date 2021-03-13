@@ -105,5 +105,5 @@ class MultiBoxLoss(nn.Module):
         
         confidence_loss = (confidence_hard_neg_loss.sum() + confidence_pos_loss.sum()) / n_positive.sum().float()
         
-        return self.alpha * loc_loss + confidence_loss
+        return self.alpha * loc_loss + confidence_loss, loc_loss, confidence_loss
 

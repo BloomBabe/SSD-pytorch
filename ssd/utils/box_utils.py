@@ -91,7 +91,7 @@ def combine(batch):
         boxes.append(b[1])
         labels.append(b[2])
         
-    images = torch.stack(images, dim= 0)
+    images = torch.stack(images, dim=0)
     return images, boxes, labels
 
 

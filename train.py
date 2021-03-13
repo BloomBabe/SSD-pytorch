@@ -1,7 +1,9 @@
 import argparse
+import os
 from tqdm import tqdm
 import torch.optim as optim
 from ssd.modules.loss import MultiBoxLoss
+from ssd.datasets.augmentation import SSDDetectAug
 from ssd.datasets.hhwd import HHWDataset
 from ssd.utils.box_utils import *
 from ssd.ssd import *
@@ -13,6 +15,7 @@ from time import gmtime, strftime
 ap = argparse.ArgumentParser()
 ap.add_argument("--dataset_root", default= "/content/data/", help="Dataroot directory path")
 ap.add_argument("--cfg_root", default= "./ssd/configs/architecture_cfg.json", help= "Cfg file path")
+ap.add_argument("--expdir_root", default= "./experiments/", help= "Experiments dir root")
 ap.add_argument("--batch_size", default= 8, type= int, help= "Batch size for training")
 ap.add_argument("--num_workers", default= 1, type= int, help = "Number of workers")
 ap.add_argument("--lr", "--learning-rate", default= 1e-3, type= float, help= "Learning rate")
@@ -28,6 +31,7 @@ global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder = args.dataset_root
+expdir_root = args.expdir_root
 num_classes = 5
 cfg_pth = args.cfg_root
 checkpoint = args.checkpoint
@@ -42,26 +46,28 @@ momentum = args.momentum      # Momentum
 weight_decay = args.weight_decay
 grad_clip = args.grad_clip
 
+def create_exp_dir(path=expdir_root):
+    checkpoint_pth = os.path.join(path, 'checkpoints')
+    if not os.path.exists(checkpoint_pth):
+        os.makedirs(checkpoint_pth)
+    tensorboard_dir = os.path.join(path, 'tensorboard')
+    if not os.path.exists(tensorboard_dir):
+        os.mkdir(tensorboard_dir)
+
 def clip_grad(optimizer, grad_clip):
     for group in optimizer.param_groups:
         for param in group['params']:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
-def save_checkpoint(epoch, model, optimizer):
+def save_checkpoint(epoch, model, optimizer, path = './checkpoints/'):
     """
         Save model checkpoint
     """
-    if checkpoint is not None:
-        pth = os.path.dirname(os.path.abspath(checkpoint))
-    else:
-        pth = './checkpoints/'
-        if not os.path.exists(pth):
-            os.makedirs(pth)
     state = {'epoch': epoch, "model": model, "optimizer": optimizer}
     current_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    filename = f"model_state_ssd300_{current_time}.pth.tar"
-    torch.save(state, os.path.join(pth, filename))
+    filename = f"ssd300_epoch{epoch}_lr{lr}_{current_time}.pth.tar"
+    torch.save(state, os.path.join(path, filename))
 
 def adjust_lr(optimizer, scale):
     """
@@ -102,7 +108,7 @@ if __name__ == '__main__':
                                                shuffle=True, collate_fn=combine,
                                                num_workers=workers, pin_memory=True)
 
-    val_dataset = HHWDataset(data_folder, mode = "test")
+    val_dataset = HHWDataset(data_folder, mode = "test", transform=SSDDetectAug())
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, 
                                              shuffle=True, collate_fn=combine,
                                              num_workers=workers, pin_memory=True)
@@ -116,32 +122,27 @@ if __name__ == '__main__':
         if epoch in decay_lr_at:
             print("Decay learning rate...")
             adjust_lr(optimizer, decay_lr_to)
-        
+        # Training
         model.train()
-        for i, (images, boxes, labels) in tqdm(enumerate(train_loader)):
+        for i, (images, boxes, labels) in enumerate(train_loader):
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
 
             cls_pred, locs_pred = model(images)
-            loss = criterion(locs_pred, cls_pred, boxes, labels)
+            loss, loc_loss, conf_loss = criterion(locs_pred, cls_pred, boxes, labels)
             mean_loss += loss.item()
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
-            
             if grad_clip is not None:
                 clip_grad(optimizer, grad_clip)
-                
             optimizer.step()
-
-        print(mean_loss)
+        # Validation
         model.eval()
         metrics_per_batch = list()
         targets = list()
         for i, (images, boxes, labels) in enumerate(val_loader):
-            if i==1:
-                break
             for label in labels:
                 targets += label.tolist() 
             image = images.to(device)
@@ -150,7 +151,7 @@ if __name__ == '__main__':
             
             with torch.no_grad():
                 cls_pred, locs_pred = model(images)
-                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes)
+                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
             metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
         
         true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]

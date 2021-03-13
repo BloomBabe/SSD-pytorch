@@ -10,7 +10,9 @@ from ssd.utils.box_utils import compute_iou
 random.seed(42)
 
 class NormalizeBox(object):
-    def __call__(self, image, boxes, labels=None):
+    def __call__(self, image, boxes=None, labels=None):
+        if boxes is None:
+            return image, boxes, labels
         width = image.width 
         height = image.height 
         boxes[:, 0] = boxes[:, 0]/width
@@ -285,6 +287,7 @@ class SSDDetectAug(object):
         self.size = size
         self.augment = Compose([
             Resize(size=size),
+            NormalizeBox(),
             ToTensor(),
             Normalize(mean=mean, std=std)
         ])
