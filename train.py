@@ -33,7 +33,7 @@ args = ap.parse_args()
 
 global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder  = args.dataset_root
 expdir_root  = args.expdir_root
 num_classes  = 5
@@ -197,7 +197,7 @@ if __name__ == '__main__':
 
         print("Loss train_loss: ", mean_loss.item()," Loss train_conf_loss: ", \
               mean_conf_loss.item(), " Loss train_loc_loss: ", mean_loc_loss.item(), \
-              " Accuracy train_mAP50: ", mAP.item())
+              " Accuracy train_mAP50: ", mAP)
         save_checkpoint(epoch, model, optimizer)
         # =================Validation=================
         # model.eval()
