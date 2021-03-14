@@ -75,31 +75,31 @@ class MultiBoxLoss(nn.Module):
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)
 
-        pos_labels = conf_t > 0
-        #Localization loss
-        #Localization loss is computed only over positive default boxes
+        pos_labels = conf_t > 0 # (batch_size, num_default_boxes)
+        # Localization loss
+        # Localization loss is computed only over positive default boxes
         smooth_L1_loss = nn.SmoothL1Loss()
         loc_loss = smooth_L1_loss(loc_pred[pos_labels], loc_t[pos_labels])
         
-        #number of positive ad hard-negative default boxes per image
+        # Number of positive ad hard-negative default boxes per image
         n_positive = pos_labels.sum(dim=1)
         n_hard_negatives = self.neg_pos * n_positive
         
-        #Find the loss for all priors
+        # Find the loss for all priors
         cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
-        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1)) # (N*8732)
-        confidence_loss_all = confidence_loss_all.view(batch_size, num_defaults) # (N, 8732)
+        confidence_loss_all = cross_entropy_loss(cls_pred.view(-1, num_classes), conf_t.view(-1)) # (batch_size*num_default_boxes)
+        confidence_loss_all = confidence_loss_all.view(batch_size, num_defaults) # (batch_size, num_default_boxes)
         
         confidence_pos_loss = confidence_loss_all[pos_labels]
         
-        #Find which priors are hard-negative
-        confidence_neg_loss = confidence_loss_all.clone() # (N, 8732)
+        # Find which priors are hard-negative
+        confidence_neg_loss = confidence_loss_all.clone() # (batch_size, num_default_boxes)
         confidence_neg_loss[pos_labels] = 0.
         confidence_neg_loss, _ = confidence_neg_loss.sort(dim = 1, descending= True)
         
-        hardness_ranks = torch.LongTensor(range(num_defaults)).unsqueeze(0).expand_as(confidence_neg_loss).to(self.device)  # (N, 8732)
+        hardness_ranks = torch.LongTensor(range(num_defaults)).unsqueeze(0).expand_as(confidence_neg_loss).to(self.device)  # (batch_size, num_default_boxes)
         
-        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1) # (N, 8732)
+        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1) # (batch_size, num_default_boxes)
         
         confidence_hard_neg_loss = confidence_neg_loss[hard_negatives]
         
