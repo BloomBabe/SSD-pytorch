@@ -38,14 +38,6 @@ def compute_statiscs(bboxes_pred,
                 continue
             overlaps = compute_iou(bbox_pred.unsqueeze(0), gt_bboxes[sample_id])
             iou, max_idx = torch.max(overlaps.squeeze(0), dim=0)
-            print("\nlabel_pred\n", label_pred)
-            print("\ngt_labels\n", gt_labels[sample_id])
-            print("\nbbox_pred\n", bbox_pred)
-            print("\ngt_bboxes\n", gt_bboxes[sample_id])
-            print("\niou\n", iou)
-            print("\n\n")
-            if sample_id == 3:
-                sys.exit()
             if iou >= iou_threshold and max_idx not in detected_box:
                 true_postives[pred_id] = 1
                 detected_box += [max_idx]
