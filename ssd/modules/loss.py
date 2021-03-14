@@ -75,13 +75,11 @@ class MultiBoxLoss(nn.Module):
         loc_t = loc_t.to(self.device)
         conf_t = conf_t.to(self.device)
 
-        pos_default_boxes  = conf_t > 0
+        pos_labels = conf_t > 0
         #Localization loss
         #Localization loss is computed only over positive default boxes
         smooth_L1_loss = nn.SmoothL1Loss()
-        loc_pred = loc_pred[pos_default_boxes.unsqueeze(-1).expand_as(loc_pred)].view(-1, 4)
-        loc_t = loc_t[pos_default_boxes.unsqueeze(-1).expand_as(loc_t)].view(-1, 4)
-        loc_loss = smooth_L1_loss(loc_pred, loc_t)
+        loc_loss = smooth_L1_loss(loc_pred[pos_labels], loc_t[pos_labels])
         
         #number of positive ad hard-negative default boxes per image
         n_positive = pos_default_boxes.sum(dim=1)
