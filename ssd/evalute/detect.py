@@ -7,7 +7,6 @@ from ssd.utils.box_utils import *
 def detect(bboxes_pred,
            cls_pred,
            default_bboxes,
-           image_size = (300, 300),
            min_score=0.6,
            iou_threshold=0.5,
            top_k=200,
@@ -39,17 +38,16 @@ def detect(bboxes_pred,
         image_labels = list()
         image_scores = list()
         decoded_bboxes = cxcy_to_xy(decode_bboxes(bboxes_pred[i], default_bboxes)) 
-        max_scores, best_label = cls_scores[i].max(dim=1)
         for c in range(num_classes):
             conf_scores = cls_scores[i][:, c] 
             mask_min_conf = conf_scores > min_score
             conf_scores = conf_scores[mask_min_conf]
             if conf_scores.size(0) == 0:
                 continue
-            cls_bboxes = decoded_bboxes[mask_min_conf]
-            nms_ids = nms(cls_bboxes, conf_scores, iou_threshold)
+            bboxes = decoded_bboxes[mask_min_conf]
+            nms_ids = nms(bboxes, conf_scores, iou_threshold)
 
-            image_boxes.append(cls_bboxes[nms_ids])
+            image_boxes.append(bboxes[nms_ids])
             image_labels.append(torch.LongTensor(nms_ids.size(0) * [c]).to(device))
             image_scores.append(conf_scores[nms_ids])
 

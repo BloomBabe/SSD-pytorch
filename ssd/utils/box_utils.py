@@ -71,12 +71,12 @@ def encode_bboxes(bboxes,  default_boxes, variances=[0.1, 0.2]):
                       torch.log(bboxes[:, 2:] / default_boxes[:, 2:])/variances[1]], 1)
 
 
-def decode_bboxes(offsets, default_boxes):
+def decode_bboxes(offsets, default_boxes, variances=[0.1, 0.2]):
     """
         Decode offsets
     """
-    return torch.cat([offsets[:, :2] * default_boxes[:, 2:] / 10 + default_boxes[:, :2], 
-                      torch.exp(offsets[:, 2:] / 5) * default_boxes[:, 2:]], 1)
+    return torch.cat([offsets[:, :2] * default_boxes[:, 2:] * variances[0] + default_boxes[:, :2], 
+                      torch.exp(offsets[:, 2:] * variances[1]) * default_boxes[:, 2:]], 1)
 
 def combine(batch):
     """

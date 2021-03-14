@@ -82,7 +82,7 @@ def adjust_lr(optimizer, scale):
     """
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * scale
-    print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
+    print("The new LR is {optimizer.param_groups[1]['lr']}\n")  
 
 
 if __name__ == '__main__':
@@ -92,19 +92,19 @@ if __name__ == '__main__':
         with open(cfg_pth) as f:
             cfg = json.load(f)
         model = SSD(num_classes=num_classes, cfgs=cfg, device=device)
-        optimizer = optim.SGD(model.parameters(), lr = lr, momentum = momentum, 
-                            weight_decay = weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, 
+                              weight_decay=weight_decay)
     else:
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint['epoch'] + 1   
-        print('\nLoaded checkpoint from epoch %d.\n' % start_epoch)
+        print(f'\nLoaded checkpoint from epoch {start_epoch}.\n')
         model = checkpoint['model']
         optimizer = checkpoint['optimizer']
         if args.adjust_optim is not None:
             print("Adjust optimizer....")
             print(args.lr)
-            optimizer = optim.SGD(model.parameters(),lr = lr, momentum = momentum, 
-                                weight_decay = weight_decay)
+            optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, 
+                                  weight_decay=weight_decay)
     model = model.to(device)
     criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             optimizer.step()
             # Accuracy
             with torch.no_grad():
-                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
+                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes)
                 stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
                 train_metrics.update(loss, loc_loss, conf_loss, stats)
   
@@ -187,7 +187,7 @@ if __name__ == '__main__':
             with torch.no_grad():
                 cls_pred, locs_pred = model(images)
                 loss, loc_loss, conf_loss = criterion(locs_pred, cls_pred, boxes, labels)
-                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
+                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes)
                 stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
                 val_metrics.update(loss, loc_loss, conf_loss, stats)
 
