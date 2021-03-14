@@ -96,7 +96,34 @@ def compute_mAP(true_positives,
         ap_per_class[cat_dict[str(cls.item())]] = precisions.mean()
 
     return ap_per_class, mean_AP/len(classes)
+    
+class Metrics(object):
+    def __init__(self):
+        super(Metrics, self).__init__()
+        self.reset()
+    
+    def reset(self):
+        self.mean_loss = 0.
+        self.mean_conf_loss = 0.
+        self.mean_loc_loss = 0.
+        self.metrics_per_batch = list()
+        self.targets = list()
 
+    def update(self, loss, loc_loss, conf_loss, metrics):
+        self.mean_loss += loss
+        self.mean_conf_loss += conf_loss
+        self.mean_loc_loss += loc_loss
+        self.metrics_per_batch += metrics
+    
+    def mean_metrics(self, length):
+        true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*self.metrics_per_batch))]
+        self.targets = torch.LongTensor(self.targets).to(device)
+        return (self.mean_loss/length, 
+                self.mean_conf_loss/length, 
+                self.mean_loc_loss/length, 
+                true_positives, 
+                pred_scores, 
+                pred_labels)
 
             
     

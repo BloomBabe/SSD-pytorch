@@ -22,11 +22,7 @@ def detect(bboxes_pred,
     """
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    w, h = image_size
-    bboxes_pred[:, :, 0] *= w
-    bboxes_pred[:, :, 2] *= w
-    bboxes_pred[:, :, 1] *= h
-    bboxes_pred[:, :, 3] *= h
+        
     batch_size = bboxes_pred.size(0)
     num_defaults = default_bboxes.size(0)
     num_classes = cls_pred.size(2)

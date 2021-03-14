@@ -12,23 +12,23 @@ from ssd.datasets.hhwd import HHWDataset
 from ssd.utils.box_utils import *
 from ssd.ssd import *
 from ssd.evalute.detect import *
-from ssd.evalute.metrics import compute_statiscs, compute_mAP
+from ssd.evalute.metrics import compute_statiscs, compute_mAP, Metrics
 from time import gmtime, strftime
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default= "/content/data/", help="Dataroot directory path")
-ap.add_argument("--cfg_root", default= "./ssd/configs/architecture_cfg.json", help= "Cfg file path")
-ap.add_argument("--expdir_root", default= "./experiments/", help= "Experiments dir root")
-ap.add_argument("--batch_size", default= 8, type= int, help= "Batch size for training")
-ap.add_argument("--num_workers", default= 1, type= int, help = "Number of workers")
-ap.add_argument("--lr", "--learning-rate", default= 1e-3, type= float, help= "Learning rate")
-ap.add_argument("--momentum", default= 0.9, type= float, help = "Momentum value for optim")
-ap.add_argument("--weight_decay", default= 5e-4, type= float, help = "Weight decay for SGD")
-ap.add_argument("--checkpoint", default = None, help = "path to model checkpoint")
-ap.add_argument("--iterations", default= 145000, type= int, help = "number of iterations to train")
-ap.add_argument("--grad_clip", default = None, help= "Gradient clip for large batch_size")
-ap.add_argument("--adjust_optim", default = None, help = "Adjust optimizer for checkpoint model")
+ap.add_argument("--dataset_root", default="/content/data/", help="Dataroot directory path")
+ap.add_argument("--cfg_root", default="./ssd/configs/architecture_cfg.json", help="Config file path")
+ap.add_argument("--expdir_root", default="./experiments/", help="Experiments dir root")
+ap.add_argument("--batch_size", default=8, type=int, help="Batch size for training")
+ap.add_argument("--num_workers", default=1, type=int, help="Number of workers")
+ap.add_argument("--lr", "--learning-rate", default=1e-3, type=float, help= "Learning rate")
+ap.add_argument("--momentum", default=0.9, type=float, help="Momentum value for optim")
+ap.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for SGD")
+ap.add_argument("--checkpoint", default=None, help="path to model checkpoint")
+ap.add_argument("--iterations", default=75000, type=int, help="number of iterations to train")
+ap.add_argument("--grad_clip", default=None, help="Gradient clip for large batch_size")
+ap.add_argument("--adjust_optim", default=None, help="Adjust optimizer for checkpoint model")
 args = ap.parse_args()
 
 global start_epoch, label_map, epoch, checkpoint, decay_lr_at
@@ -44,7 +44,7 @@ iterations   = args.iterations  # Number of iterations to train
 workers      = args.num_workers # Number of workers for loading data in the DataLoader
 print_freq   = 100              # Print training status every __ batches
 lr           = args.lr          # Learning rate
-decay_lr_at  = [96500, 120000]  # Decay learning rate after these many iterations
+decay_lr_at  = [46000, 70000]  # Decay learning rate after these many iterations
 decay_lr_to  = 0.1              # Decay learning rate to this fraction of the existing learning rate
 momentum     = args.momentum    # Momentum
 weight_decay = args.weight_decay
@@ -84,33 +84,6 @@ def adjust_lr(optimizer, scale):
         param_group['lr'] = param_group['lr'] * scale
     print("The new LR is %f\n" % (optimizer.param_groups[1]['lr'],))  
 
-class Metrics(object):
-    def __init__(self):
-        super(Metrics, self).__init__()
-        self.reset()
-    
-    def reset(self):
-        self.mean_loss = 0.
-        self.mean_conf_loss = 0.
-        self.mean_loc_loss = 0.
-        self.metrics_per_batch = list()
-        self.targets = list()
-
-    def update(self, loss, loc_loss, conf_loss, metrics):
-        self.mean_loss += loss
-        self.mean_conf_loss += conf_loss
-        self.mean_loc_loss += loc_loss
-        self.metrics_per_batch += metrics
-    
-    def mean_metrics(self, length):
-        true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*self.metrics_per_batch))]
-        self.targets = torch.LongTensor(self.targets).to(device)
-        return (self.mean_loss/length, 
-                self.mean_conf_loss/length, 
-                self.mean_loc_loss/length, 
-                true_positives, 
-                pred_scores, 
-                pred_labels)
 
 if __name__ == '__main__':
     # Init model or load checkpoint
@@ -159,11 +132,11 @@ if __name__ == '__main__':
             adjust_lr(optimizer, decay_lr_to)
         # =================Training=================
         start_time = time.time()
-        metrics = Metrics()
+        train_metrics = Metrics()
         model.train()
         for i, (images, boxes, labels) in enumerate(train_loader):
             for label in labels:
-                metrics.targets += label.tolist() 
+                train_metrics.targets += label.tolist() 
             image = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
@@ -180,14 +153,14 @@ if __name__ == '__main__':
             with torch.no_grad():
                 locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
                 stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
-                metrics.update(loss, loc_loss, conf_loss, stats)
+                train_metrics.update(loss, loc_loss, conf_loss, stats)
   
         train_time = time.time()-start_time 
         print("Time: ", datetime.timedelta(seconds=train_time))
 
-        mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = metrics.mean_metrics(len(train_loader))
-        ap_per_class, mAP = compute_mAP(true_positives, pred_scores, pred_labels, metrics.targets, val_dataset.cat_dict)
-        metrics.reset()
+        mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = train_metrics.mean_metrics(len(train_loader))
+        ap_per_class, mAP = compute_mAP(true_positives, pred_scores, pred_labels, train_metrics.targets, val_dataset.cat_dict)
+        train_metrics.reset()
 
         writer.add_scalar("Loss/train_loss", mean_loss, epoch)
         writer.add_scalar("Loss/train_conf_loss", mean_conf_loss, epoch)
@@ -199,23 +172,38 @@ if __name__ == '__main__':
               mean_conf_loss.item(), " Loss train_loc_loss: ", mean_loc_loss.item(), \
               " Accuracy train_mAP50: ", mAP)
         save_checkpoint(epoch, model, optimizer)
-        # =================Validation=================
-        # model.eval()
-        # metrics_per_batch = list()
-        # targets = list()
-        # for i, (images, boxes, labels) in enumerate(val_loader):
-        #     for label in labels:
-        #         targets += label.tolist() 
-        #     image = images.to(device)
-        #     boxes = [bbox.to(device) for bbox in boxes]
-        #     labels = [label.to(device) for label in labels]
-            
-        #     with torch.no_grad():
-        #         cls_pred, locs_pred = model(images)
-        #         locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
-        #     metrics_per_batch += compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
-        
-        # true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*metrics_per_batch))]
-        # targets = torch.LongTensor(targets).to(device)
-        # metric_dict = compute_mAP(true_positives, pred_scores, pred_labels, targets, val_dataset.cat_dict)
-        # print(metric_dict)
+
+        #=================Validation=================
+        print("Validation:")
+        model.eval()
+        val_metrics = Metrics()
+        start_time = time.time()
+        for i, (images, boxes, labels) in enumerate(val_loader):
+            for label in labels:
+                val_metrics.targets += label.tolist() 
+            image = images.to(device)
+            boxes = [bbox.to(device) for bbox in boxes]
+            labels = [label.to(device) for label in labels]
+            with torch.no_grad():
+                cls_pred, locs_pred = model(images)
+                loss, loc_loss, conf_loss = criterion(locs_pred, cls_pred, boxes, labels)
+                locs_pred, label_pred, conf_scores = detect(locs_pred, cls_pred, model.default_bboxes, image_size=(image.size(2), image.size(3)))
+                stats = compute_statiscs(locs_pred, label_pred, conf_scores, boxes, labels)
+                val_metrics.update(loss, loc_loss, conf_loss, stats)
+
+        val_time = time.time()-start_time 
+        print("Time: ", datetime.timedelta(seconds=val_time))
+
+        mean_loss, mean_conf_loss, mean_loc_loss, true_positives, pred_scores, pred_labels = val_metrics.mean_metrics(len(val_loader))
+        ap_per_class, mAP = compute_mAP(true_positives, pred_scores, pred_labels, val_metrics.targets, val_dataset.cat_dict)
+        val_metrics.reset()
+
+        writer.add_scalar("Loss/val_loss", mean_loss, epoch)
+        writer.add_scalar("Loss/val_conf_loss", mean_conf_loss, epoch)
+        writer.add_scalar("Loss/val_loc_loss", mean_loc_loss, epoch)
+        writer.add_scalars("Accuracy/val_per_class", ap_per_class, epoch)
+        writer.add_scalar("Accuracy/val_mAP50", mAP, epoch)
+
+        print("Loss val_loss: ", mean_loss.item()," Loss val_conf_loss: ", \
+              mean_conf_loss.item(), " Loss val_loc_loss: ", mean_loc_loss.item(), \
+              " Accuracy val_mAP50: ", mAP)
