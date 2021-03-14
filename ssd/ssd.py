@@ -61,19 +61,16 @@ class SSD(nn.Module):
     def __init__(self,
                  cfgs,
                  num_classes = 101,
-                 #mode = 'train',
                  backbone_name = 'vgg16_bn',
                  ssd_layers_name = 'ssd_300',
                  device=None):
         super(SSD, self).__init__()
         self.num_classes = num_classes
         self.device = device
-        #self.mode = mode
         self.backbone_name = backbone_name
         self.ssd_layers_name = ssd_layers_name
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        #assert mode in ['train', 'test']
         assert self.backbone_name in ['vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 
                                       'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn']
         assert self.ssd_layers_name in ['ssd_300']

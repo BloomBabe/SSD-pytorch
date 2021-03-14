@@ -7,7 +7,7 @@ from ssd.utils.box_utils import *
 def detect(bboxes_pred,
            cls_pred,
            default_bboxes,
-           min_score=0.6,
+           min_score=0.4,
            iou_threshold=0.5,
            top_k=200,
            device=None):
