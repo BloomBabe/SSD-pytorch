@@ -17,7 +17,7 @@ from time import gmtime, strftime
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default="/content/data/", help="Dataroot directory path")
+ap.add_argument("--dataset_root", default="/content/data/", help="Dataset directory path")
 ap.add_argument("--cfg_root", default="./ssd/configs/architecture_cfg.json", help="Config file path")
 ap.add_argument("--expdir_root", default="./experiments/", help="Experiments dir root")
 ap.add_argument("--batch_size", default=16, type=int, help="Batch size for training")
