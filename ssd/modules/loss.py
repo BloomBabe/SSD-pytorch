@@ -95,14 +95,11 @@ class MultiBoxLoss(nn.Module):
         # Find which priors are hard-negative
         confidence_neg_loss = confidence_loss_all.clone() # (batch_size, num_default_boxes)
         confidence_neg_loss[pos_labels] = 0.
-        confidence_neg_loss, _ = confidence_neg_loss.sort(dim = 1, descending= True)
+        confidence_neg_loss, _ = confidence_neg_loss.sort(dim=1, descending=True)
         
         hardness_ranks = torch.LongTensor(range(num_defaults)).unsqueeze(0).expand_as(confidence_neg_loss).to(self.device)  # (batch_size, num_default_boxes)
-        
         hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1) # (batch_size, num_default_boxes)
-        
-        confidence_hard_neg_loss = confidence_neg_loss[hard_negatives]
-        
+        confidence_hard_neg_loss = confidence_neg_loss[hard_negatives] 
         confidence_loss = (confidence_hard_neg_loss.sum() + confidence_pos_loss.sum()) / n_positive.sum().float()
         
         return self.alpha * loc_loss + confidence_loss, loc_loss, confidence_loss
