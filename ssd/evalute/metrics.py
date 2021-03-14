@@ -98,8 +98,12 @@ def compute_mAP(true_positives,
     return ap_per_class, mean_AP/len(classes)
     
 class Metrics(object):
-    def __init__(self):
+    def __init__(self, device=None):
         super(Metrics, self).__init__()
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = device
         self.reset()
     
     def reset(self):
@@ -117,7 +121,7 @@ class Metrics(object):
     
     def mean_metrics(self, length):
         true_positives, pred_scores, pred_labels = [torch.cat(x, 0) for x in list(zip(*self.metrics_per_batch))]
-        self.targets = torch.LongTensor(self.targets).to(device)
+        self.targets = torch.LongTensor(self.targets).to(self.device)
         return (self.mean_loss/length, 
                 self.mean_conf_loss/length, 
                 self.mean_loc_loss/length, 
