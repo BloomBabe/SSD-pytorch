@@ -3,4 +3,10 @@
 2,2, car
 3,3, pedestrian
 4,4, trafficLight
+5,4, trafficLight-Green
+6,4, trafficLight-GreenLeft
+7,4, trafficLight-Red
+8,4, trafficLight-RedLeft
+9,4, trafficLight-Yellow
+10,4, trafficLight-YellowLeft
 11,5, truck

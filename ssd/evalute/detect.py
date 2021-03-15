@@ -39,7 +39,7 @@ def detect(bboxes_pred,
         image_labels = list()
         image_scores = list()
         decoded_bboxes = cxcy_to_xy(decode_bboxes(bboxes_pred[i], default_bboxes)) 
-        for c in range(num_classes):
+        for c in range(1, num_classes):
             conf_scores = cls_scores[i][:, c] 
             mask_min_conf = conf_scores > min_score
             conf_scores = conf_scores[mask_min_conf]

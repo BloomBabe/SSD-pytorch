@@ -42,7 +42,6 @@ checkpoint   = args.checkpoint
 batch_size   = args.batch_size  # Batch size
 iterations   = args.iterations  # Number of iterations to train
 workers      = args.num_workers # Number of workers for loading data in the DataLoader
-print_freq   = 100              # Print training status every __ batches
 lr           = args.lr          # Learning rate
 decay_lr_at  = [46000, 70000]   # Decay learning rate after these many iterations
 decay_lr_to  = 0.1              # Decay learning rate to this fraction of the existing learning rate

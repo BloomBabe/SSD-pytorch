@@ -44,7 +44,7 @@ class COCOAnnotationTransform(object):
         for obj in target:
             if 'bbox' in obj:
                 if obj['category_id'] not in self.label_map.keys():
-                    continue
+                        continue
                 bbox = obj['bbox']
                 bbox[2] += bbox[0]
                 bbox[3] += bbox[1]
@@ -53,6 +53,9 @@ class COCOAnnotationTransform(object):
                 labels += [label_idx] # [label_idx]
             else:
                 print("no bbox problem!")
+        if len(bboxes) == 0:
+            print(target)
+            raise ValueError("Targets is empty")
         bboxes = torch.FloatTensor(bboxes)
         labels = torch.LongTensor(labels)
         return bboxes, labels   # [xmin, ymin, xmax, ymax] [label_idx]
@@ -92,7 +95,6 @@ class COCODataset(Dataset):
     
     def __getitem__(self, idx):
         img_id = self.ids[idx]
-        # target = self.coco.imgToAnns[img_id]
         ann_ids = self.coco.getAnnIds(imgIds=img_id)
         target = self.coco.loadAnns(ann_ids)
 
