@@ -1,0 +1,6 @@
+0,0, background
+1,1, biker
+2,2, car
+3,3, pedestrian
+4,4, trafficLight
+11,5, truck

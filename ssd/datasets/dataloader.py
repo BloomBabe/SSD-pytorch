@@ -32,22 +32,17 @@ class COCOAnnotationTransform(object):
                 bbox = obj['bbox']
                 bbox[2] += bbox[0]
                 bbox[3] += bbox[1]
-                label_idx = obj['category_id']+1
+                label_idx = obj['category_id'] + 1
                 bboxes += [bbox]      # [xmin, ymin, xmax, ymax]
                 labels += [label_idx] # [label_idx]
             else:
                 print("no bbox problem!")
         bboxes = torch.FloatTensor(bboxes)
         labels = torch.LongTensor(labels)
-        return bboxes, labels # [xmin, ymin, xmax, ymax] [label_idx]
+        return bboxes, labels   # [xmin, ymin, xmax, ymax] [label_idx]
 
 def label_map(annotation_file):
     """
-    Return categories dict:
-    {"0": "Background",
-     "1": "Workers",
-     "2": "head"
-     ...}
     """
     ann = json.load(open(annotation_file, 'r'))
     cat_dict = dict()

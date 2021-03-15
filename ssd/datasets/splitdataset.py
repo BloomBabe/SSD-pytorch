@@ -41,7 +41,10 @@ if __name__ == '__main__':
         new_ann["info"] = ann["info"]
         new_ann["licenses"] = ann["licenses"]
         new_ann["categories"] = ann["categories"]
-        # new_ann["categories"][0]["name"] = "Background"
+        # The first cat in annotation is "obstacles", but that cat does not exist in imgs
+        # thats why I replace it to background
+        new_ann["categories"][0]["name"] = "Background"
+
         new_ann["images"] = list()
         new_ann["annotations"] = list()
 
