@@ -21,7 +21,7 @@ parser.add_argument("--dataset_root", default="/content/data/", help="Dataset di
 parser.add_argument("--cfg_root", default="./ssd/configs/architecture_cfg.json", help="Config file path")
 parser.add_argument("--expdir_root", default="./experiments/", help="Experiments dir root")
 parser.add_argument("--batch_size", default=16, type=int, help="Batch size for training")
-parser.add_argument("--num_workers", default=1, type=int, help="Number of workers")
+parser.add_argument("--num_workers", default=2, type=int, help="Number of workers")
 parser.add_argument("--lr", "--learning-rate", default=1e-3, type=float, help= "Learning rate")
 parser.add_argument("--momentum", default=0.9, type=float, help="Momentum value for optim")
 parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for SGD")
