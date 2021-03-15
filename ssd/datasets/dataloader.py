@@ -1,7 +1,6 @@
 """
-Hard Hat Workers Dataset:
-https://public.roboflow.com/object-detection/hard-hat-workers/2
-COCO annotation format
+Dataloader for 
+COCO annotation format data
 """
 import torch
 from torch.utils.data import Dataset
@@ -19,16 +18,13 @@ class COCOAnnotationTransform(object):
     def __init__(self):
         super(COCOAnnotationTransform, self).__init__()
 
-    def __call__(self, target, width, height):
+    def __call__(self, target):
         """
         Args:
             target (dict): COCO target json annotation as a python dict
-            height (int): height
-            width  (int): width
         Returns:
             a list containing lists of bounding boxes  [bbox coords, class idx]
         """
-        scale = np.array([width, height, width, height])
         labels = []
         bboxes = []
         for obj in target:
@@ -60,25 +56,24 @@ def label_map(annotation_file):
         cat_dict[str(cat["id"]+1)] = cat["name"]
     return cat_dict
 
-class HHWDataset(Dataset):
-
+class COCODataset(Dataset):
     def __init__(self,
                  dataset_pth,
                  transform = SSDAugmentation(),
                  target_transform = COCOAnnotationTransform(),
                  mode = 'train'):
-        super(HHWDataset, self).__init__()
+        super(COCODataset, self).__init__()
         self.dataset_pth = dataset_pth
         self.mode = mode
         assert self.mode in ['train', 'test']
         self.root = os.path.join(self.dataset_pth, self.mode)
-        print(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
-        self.coco = COCO(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
+        print(os.path.join(self.dataset_pth, f'{mode}_annotations.coco.json'))
+        self.coco = COCO(os.path.join(self.dataset_pth, f'{mode}_annotations.coco.json'))
         self.ids = list(self.coco.imgToAnns.keys())
         self.transform = transform
         self.target_transform = target_transform
-        
-        self.cat_dict = label_map(os.path.join(self.dataset_pth, f'_{mode}_annotations.coco.json'))
+        self.cat_dict = label_map(os.path.join(self.dataset_pth, f'{mode}_annotations.coco.json'))
+
     def __len__(self):
         return len(self.ids)
     
@@ -92,12 +87,10 @@ class HHWDataset(Dataset):
         assert os.path.exists(path), f'Image path does not exist: {path}'
         img = Image.open(path, mode="r")
         img = img.convert("RGB")
-        height, width = img.size
         
-        boxes, labels = self.target_transform(target, width, height)
+        boxes, labels = self.target_transform(target)
 
         if self.transform is not None:
             target = np.array(target)
             img, boxes, labels = self.transform(img, boxes, labels)
-
         return img, boxes, labels

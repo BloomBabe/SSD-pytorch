@@ -8,7 +8,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from ssd.modules.loss import MultiBoxLoss
 from ssd.datasets.augmentation import SSDDetectAug
-from ssd.datasets.hhwd import HHWDataset
+from ssd.datasets.dataloader import COCODataset
 from ssd.utils.box_utils import *
 from ssd.ssd import *
 from ssd.evalute.detect import *
@@ -108,12 +108,12 @@ if __name__ == '__main__':
     model = model.to(device)
     criterion = MultiBoxLoss(model.default_bboxes, device=device).to(device)
 
-    train_dataset = HHWDataset(data_folder, mode = "train")
+    train_dataset = COCODataset(data_folder, mode="train")
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
                                                shuffle=True, collate_fn=combine,
                                                num_workers=workers, pin_memory=True)
 
-    val_dataset = HHWDataset(data_folder, mode = "test", transform=SSDDetectAug())
+    val_dataset = COCODataset(data_folder, mode="test", transform=SSDDetectAug())
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, 
                                              shuffle=True, collate_fn=combine,
                                              num_workers=workers, pin_memory=True)

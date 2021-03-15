@@ -11,9 +11,9 @@ from tqdm import tqdm
 random.seed(42)
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default="/content/data1/export/", help="Dataset directory path")
-ap.add_argument("--new_dataset_root", default="/content/data2/", help="New dataset directory path")
-ap.add_argument("--ann_path", default="/content/data1/export/_annotations.coco.json", help="Annotation file path")
+ap.add_argument("--dataset_root", default="/content/data/export/", help="Dataset directory path")
+ap.add_argument("--new_dataset_root", default="/content/data/", help="New dataset directory path")
+ap.add_argument("--ann_path", default="/content/data/_annotations.coco.json", help="Annotation file path")
 
 args = ap.parse_args()
 data_root = args.dataset_root
