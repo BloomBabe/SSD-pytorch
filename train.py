@@ -36,7 +36,7 @@ global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder  = args.dataset_root
 expdir_root  = args.expdir_root
-num_classes  = 5
+num_classes  = 13
 cfg_pth      = args.cfg_root
 checkpoint   = args.checkpoint
 batch_size   = args.batch_size  # Batch size
