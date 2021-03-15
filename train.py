@@ -16,20 +16,20 @@ from ssd.evalute.metrics import compute_statiscs, compute_mAP, Metrics
 from time import gmtime, strftime
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("--dataset_root", default="/content/data/", help="Dataset directory path")
-ap.add_argument("--cfg_root", default="./ssd/configs/architecture_cfg.json", help="Config file path")
-ap.add_argument("--expdir_root", default="./experiments/", help="Experiments dir root")
-ap.add_argument("--batch_size", default=16, type=int, help="Batch size for training")
-ap.add_argument("--num_workers", default=1, type=int, help="Number of workers")
-ap.add_argument("--lr", "--learning-rate", default=1e-3, type=float, help= "Learning rate")
-ap.add_argument("--momentum", default=0.9, type=float, help="Momentum value for optim")
-ap.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for SGD")
-ap.add_argument("--checkpoint", default=None, help="path to model checkpoint")
-ap.add_argument("--iterations", default=75000, type=int, help="number of iterations to train")
-ap.add_argument("--grad_clip", default=None, help="Gradient clip for large batch_size")
-ap.add_argument("--adjust_optim", default=None, help="Adjust optimizer for checkpoint model")
-args = ap.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset_root", default="/content/data/", help="Dataset directory path")
+parser.add_argument("--cfg_root", default="./ssd/configs/architecture_cfg.json", help="Config file path")
+parser.add_argument("--expdir_root", default="./experiments/", help="Experiments dir root")
+parser.add_argument("--batch_size", default=16, type=int, help="Batch size for training")
+parser.add_argument("--num_workers", default=1, type=int, help="Number of workers")
+parser.add_argument("--lr", "--learning-rate", default=1e-3, type=float, help= "Learning rate")
+parser.add_argument("--momentum", default=0.9, type=float, help="Momentum value for optim")
+parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for SGD")
+parser.add_argument("--checkpoint", default=None, help="path to model checkpoint")
+parser.add_argument("--iterations", default=75000, type=int, help="number of iterations to train")
+parser.add_argument("--grad_clip", default=None, help="Gradient clip for large batch_size")
+parser.add_argument("--adjust_optim", default=None, help="Adjust optimizer for checkpoint model")
+args = parser.parse_args()
 
 global start_epoch, label_map, epoch, checkpoint, decay_lr_at
 
