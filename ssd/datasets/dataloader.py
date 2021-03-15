@@ -11,6 +11,8 @@ from PIL import Image
 from pycocotools.coco import COCO
 from ssd.datasets.augmentation import SSDAugmentation
 
+CLASSES = ('Background', 'Biker', 'Car', 'Pedestrian', 'TrafficLight', 'Truck')
+
 class COCOAnnotationTransform(object):
     """Transforms a COCO annotation into a Tensor of bbox coords and label index
     Initilized with a dictionary lookup of classnames to indexes
@@ -74,7 +76,7 @@ class COCODataset(Dataset):
     
     def __getitem__(self, idx):
         img_id = self.ids[idx]
-        target = self.coco.imgToAnns[img_id]
+        # target = self.coco.imgToAnns[img_id]
         ann_ids = self.coco.getAnnIds(imgIds=img_id)
         target = self.coco.loadAnns(ann_ids)
 
