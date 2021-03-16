@@ -122,6 +122,8 @@ if __name__ == '__main__':
     
     ckpts_dir, log_dir = create_exp_dir()
     writer = SummaryWriter(log_dir=log_dir, max_queue=20)
+    train_metrics = Metrics()
+    val_metrics = Metrics()
 
     for epoch in range(start_epoch, epochs):
         arrow = int(epoch//(epochs/50))
@@ -131,7 +133,6 @@ if __name__ == '__main__':
             adjust_lr(optimizer, decay_lr_to)
         # =================Training=================
         start_time = time.time()
-        train_metrics = Metrics()
         model.train()
         for i, (images, boxes, labels) in enumerate(train_loader):
             for label in labels:
@@ -175,7 +176,6 @@ if __name__ == '__main__':
         #=================Validation=================
         print("Validation:")
         model.eval()
-        val_metrics = Metrics()
         start_time = time.time()
         for i, (images, boxes, labels) in enumerate(val_loader):
             for label in labels:
