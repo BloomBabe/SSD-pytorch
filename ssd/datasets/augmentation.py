@@ -93,7 +93,7 @@ class Resize(object):
         if type(image) != PIL.Image.Image:
             image = TF.to_pil_image(image)
         if boxes is None:
-            return image, new_boxes, labels
+            return image, boxes, labels
         old_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0)
         new_boxes = boxes / old_dims  # percent coordinates
 
