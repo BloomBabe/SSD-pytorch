@@ -6,6 +6,8 @@ import json
 import os
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def vgg_backbone(cfg,
                  in_channels = 3,
                  pretrained = True):
@@ -72,6 +74,6 @@ class VGGBackbone(nn.Module):
             if isinstance(layer, nn.MaxPool2d):
                 num_layer +=1
                 if num_layer == 4:
-                    conv4_x = x.clone()
+                    conv4_x = x.clone().to(device)
             x = layer(x)
         return conv4_x, x

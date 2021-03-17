@@ -137,7 +137,7 @@ if __name__ == '__main__':
         for i, (images, boxes, labels) in enumerate(train_loader):
             for label in labels:
                 train_metrics.targets += label.tolist() 
-            image = images.to(device)
+            images = images.to(device)
             boxes = [bbox.to(device) for bbox in boxes]
             labels = [label.to(device) for label in labels]
             # Loss
