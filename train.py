@@ -81,7 +81,7 @@ def adjust_lr(optimizer, scale):
     """
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * scale
-    print("The new LR is {optimizer.param_groups[1]['lr']}\n")  
+    print(f"The new LR is {optimizer.param_groups[1]['lr']}\n")  
 
 
 if __name__ == '__main__':
