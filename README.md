@@ -12,7 +12,7 @@ To train run:
 ```
 python train.py
 ```
-I trained on 16 batch size during ~80 epochs. Tensorboard logs:
+I trained on 16 batch size during ~80 epochs ([weights](https://drive.google.com/file/d/12EQsh4PJjjcDw2KafcZjeEJufHnwHYUf/view?usp=sharing)). Tensorboard logs:
 
 <p align="justify">
   <img src="./images/logs/Loss_1.JPG" width="500">
