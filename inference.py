@@ -19,7 +19,7 @@ parser.add_argument("--trained_model", default = "/content/drive/MyDrive/SSD/15.
                     help = "Trained state_dict file path to open")
 parser.add_argument("--img_pth", type = str, help = "Path to input image")
 parser.add_argument("--output_pth", type = str, help = "Path to save output image")
-parser.add_argument("--min_score", default = 0.4, type = float, help = "Min score for detect")
+parser.add_argument("--min_score", default = 0.1, type = float, help = "Min score for detect")
 parser.add_argument("--iou_threshold", default = 0.5, type = float, help = "Max overlap for NMS")
 parser.add_argument("--top_k", default = 200, type = int, help = "Top k for NMS")
 args = parser.parse_args()
@@ -66,13 +66,13 @@ if __name__ == '__main__':
     image = image.convert('RGB')
     width = image.width
     height = image.height
-    orig_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0)
+    orig_dims = torch.FloatTensor([width, height, width, height]).unsqueeze(0).to(device)
     # Transformed image by defaults val augmentations
     transformed_img = image.copy()
     transformed_img, _, _ = SSDDetectAug()(transformed_img)
     transformed_img = transformed_img.unsqueeze(0)
     # Make predictions and decode them
-    cls_pred, locs_pred = model(transformed_img)
+    cls_pred, locs_pred = model(transformed_img.to(device))
     locs_pred, labels_pred, conf_scores = detect(locs_pred, cls_pred, 
                                                 model.default_bboxes, 
                                                 min_score=0.4,
@@ -84,8 +84,8 @@ if __name__ == '__main__':
     labels_pred = [CLASSES[i] for i in labels_pred[0].tolist()]
     if len(labels_pred) == 1 and labels_pred[0] == 'background':
         raise ValueError ('No predictions')
-    
-    image = drawPred(image, locs_pred, labels_pred, *conf_scores)
+    conf_scores = conf_scores[0]
+    image = drawPred(image, locs_pred, labels_pred, conf_scores)
     image.save(os.path.join(output_pth,'pred_img.jpg'))
     imshow(np.asarray(image))
     

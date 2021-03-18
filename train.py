@@ -70,7 +70,7 @@ def save_checkpoint(epoch, model, optimizer, path=os.path.join(expdir_root, 'che
     """
     state = {'epoch': epoch, "model": model, "optimizer": optimizer}
     current_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    filename = f"ssd300_epoch{epoch}_lr{lr}_{current_time}.pth.tar"
+    filename = f"ssd300_epoch{epoch}_lr{optimizer.param_groups[0]['lr']}_{current_time}.pth.tar"
     torch.save(state, os.path.join(path, filename))
 
 def adjust_lr(optimizer, scale):
@@ -81,7 +81,7 @@ def adjust_lr(optimizer, scale):
     """
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * scale
-    print(f"The new LR is {optimizer.param_groups[1]['lr']}\n")  
+    print(f"The new LR is {optimizer.param_groups[0]['lr']}\n")  
 
 
 if __name__ == '__main__':
