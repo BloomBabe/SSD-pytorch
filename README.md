@@ -12,3 +12,10 @@ To train run:
 ```
 python train.py
 ```
+I trained on 16 batch size during ~80 epochs. Tensorboard logs:
+
+<p align="justify">
+  <img src="./images/logs/Loss_1.JPG" width="100">
+  <img src="./images/logs/Loss_2.JPG" width="100">
+  <img src="./images/logs/Accuracy.JPG" width="100">
+</p>
