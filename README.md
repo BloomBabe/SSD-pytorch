@@ -19,3 +19,11 @@ I trained on 16 batch size during ~80 epochs. Tensorboard logs:
   <img src="./images/logs/Loss_2.JPG" width="500">
   <img src="./images/logs/Accuracy.JPG" width="500">
 </p>
+
+To inference model run:
+```
+python inference.py --img_pth --output_pth --trained_model
+```
+<p align="center">
+  <img src="./images/pred_img.jpg" width="500">
+</p>
